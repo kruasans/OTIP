@@ -1,6 +1,11 @@
 # fastapi-todo-lr1
 
 ```bash
+# установка с прокси и без
+pip install --user --proxy http://login:pass@192.168.232.1:3128 -r requirements.txt
+pip install --user -r requirements.txt
+
+cd app
 uvicorn main:app --reload
 ```
 
