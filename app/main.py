@@ -25,12 +25,31 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
-async def home(request: Request, database: Session = Depends(get_db)):
+async def home(request: Request,
+               database: Session = Depends(get_db),
+               limit: int = 5,
+               skip: int = 0):
     """Main page with todo list
     """
     logger.info("In home")
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc())
-    return templates.TemplateResponse("index.html", {"request": request, "todos": todos})
+    count_todos = database.query(models.Todo).count()
+    count_pages = int(count_todos / limit)
+    if count_todos < 10:
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc())
+        return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
+                                                         "limit": limit, "skip": skip,
+                                                         "count_pages": count_pages})
+    if count_pages * limit != count_todos:
+        count_pages += 1
+    if skip > count_pages:
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(0).limit(limit)
+        return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
+                                                         "limit": limit, "skip": skip,
+                                                         "count_pages": count_pages})
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(limit * skip).limit(limit)
+    return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
+                                                     "limit": limit, "skip": skip,
+                                                     "count_pages": count_pages})
 
 
 @app.post("/add", status_code=status.HTTP_201_CREATED)
