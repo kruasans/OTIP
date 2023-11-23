@@ -9,7 +9,6 @@
     <script>
         function change_status(id){
             var path = "/checked/" + id;
-
             fetch(path, {method : "POST"});
             location.reload();
         }
