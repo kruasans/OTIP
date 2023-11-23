@@ -101,5 +101,26 @@ async def todo_delete(request: Request,
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.post("/checked/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+async def todo_checked(request: Request,
+                       response: Response,
+                       todo_id: int,
+                       database: Session = Depends(get_db)):
+    """Change todo status on home page
+    """
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    if todo.completed is True:
+        todo.completed = False
+        logger.info(f"Editting status: {todo} to not Done")
+    else:
+        todo.completed = True
+        logger.info(f"Editting status: {todo} to Done")
+    database.commit()
+    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
