@@ -36,14 +36,14 @@ async def home(request: Request, database: Session = Depends(get_db)):
 @app.post("/add", status_code=status.HTTP_201_CREATED)
 async def todo_add(request: Request,
                    response: Response,
-                   task: Annotated[str, Form(max_length=500)] = None,
+                   title: Annotated[str, Form(max_length=500)] = None,
                    database: Session = Depends(get_db)):
     """Add new todo
     """
-    if task is None or task.replace(" ", "") == "" or task == "":
+    if title is None or title.replace(" ", "") == "" or title == "":
         response.status_code = status.HTTP_411_LENGTH_REQUIRED
         return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
-    todo = models.Todo(task=task)
+    todo = models.Todo(title=title)
     logger.info(f"Creating todo: {todo}")
     database.add(todo)
     database.commit()
@@ -65,17 +65,17 @@ async def todo_edit(
         request: Request,
         response: Response,
         todo_id: int,
-        task:  Annotated[str, Form(max_length=500)] = None,
+        title:  Annotated[str, Form(max_length=500)] = None,
         completed: bool = Form(False),
         database: Session = Depends(get_db)):
     """Edit todo
     """
-    if task is None or task.replace(" ", "") == "":
+    if title is None or title.replace(" ", "") == "":
         response.status_code = status.HTTP_411_LENGTH_REQUIRED
         return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     logger.info(f"Editting todo: {todo}")
-    todo.task = task
+    todo.title = title
     todo.completed = completed
     database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
@@ -83,6 +83,7 @@ async def todo_edit(
 
 @app.get("/delete/{todo_id}")
 async def todo_delete(request: Request,
+                      response: Response,
                       todo_id: int,
                       database: Session = Depends(get_db)):
     """Delete todo
