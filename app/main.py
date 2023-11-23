@@ -88,6 +88,9 @@ async def todo_delete(request: Request,
     """Delete todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
