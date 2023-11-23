@@ -5,6 +5,11 @@
     <form action="/add" method="post">
         <textarea name="title" rows="2" placeholder="Введите название задачи"></textarea><br></br>
         <textarea name="details" rows="5" placeholder="Введите задачу"> </textarea>
+        <select name="type" id="type">
+            {% for type in types %}
+                <option value="{{type.value}}">{{type.value}}</option>
+            {% endfor %}
+        </select>
         <button type="submit">Добавить</button>
     </form>
 
@@ -18,6 +23,7 @@
                 {% else %}
                     {{ todo.title }}
                 {% endif %}
+                <span style="color:green;">{{todo.type}}</span>
                 <input type="checkbox" name="completed" onchange="change_status({{todo.id}})" {% if todo.completed %}checked{% endif %}>
                 <small>
                     <a href="edit/{{ todo.id }}">Редактировать</a>

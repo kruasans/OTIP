@@ -11,6 +11,8 @@ from typing import Annotated
 from database import init_db, get_db, Session
 import models
 
+from tags import TodoTags
+
 init_db()
 
 # pylint: disable=invalid-name
@@ -38,24 +40,25 @@ async def home(request: Request,
         todos = database.query(models.Todo).order_by(models.Todo.id.desc())
         return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
                                                          "limit": limit, "skip": skip,
-                                                         "count_pages": count_pages})
+                                                         "count_pages": count_pages, "types": TodoTags})
     if count_pages * limit != count_todos:
         count_pages += 1
     if skip > count_pages:
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(0).limit(limit)
         return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
                                                          "limit": limit, "skip": skip,
-                                                         "count_pages": count_pages})
+                                                         "count_pages": count_pages, "types": TodoTags})
     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(limit * skip).limit(limit)
     return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
                                                      "limit": limit, "skip": skip,
-                                                     "count_pages": count_pages})
+                                                     "count_pages": count_pages, "types": TodoTags})
 
 
 @app.post("/add", status_code=status.HTTP_201_CREATED)
 async def todo_add(request: Request,
                    response: Response,
                    title: Annotated[str, Form(max_length=50)] = None,
+                   type: Annotated[str, Form()] = "Personal",
                    details: Annotated[str, Form(max_length=500)] = None,
                    database: Session = Depends(get_db)):
     """Add new todo
@@ -63,7 +66,7 @@ async def todo_add(request: Request,
     if title is None or title.replace(" ", "") == "" or title == "":
         response.status_code = status.HTTP_411_LENGTH_REQUIRED
         return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
-    todo = models.Todo(title=title, details=details)
+    todo = models.Todo(title=title, details=details, type=type)
     logger.info(f"Creating todo: {todo}")
     database.add(todo)
     database.commit()
