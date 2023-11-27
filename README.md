@@ -35,10 +35,10 @@ uvicorn main:app --reload
 # Для работы
 
 ## Для сборки docker-образа
-`docker build -t 2021-3-26-cha .`
+`sudo docker build -t 2021-3-26-cha .`
 
 ## Запуск djcker-образа для пользователя
-`docker run sudo docker run --rm -p 80:80 2021-3-26-cha`
+`sudo docker run --rm -p 80:80 2021-3-26-cha`
 
 ## Запуск dpcker-образа для разработчика
 `sudo docker run --rm -v "${PWD}/app":/code/app -p 80:80 2021-3-26-cha`

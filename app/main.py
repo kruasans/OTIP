@@ -2,7 +2,7 @@
 """
 from loguru import logger
 
-from fastapi import FastAPI, Request, Depends, Form, status, Response, Query
+from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,7 +30,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def home(request: Request,
                database: Session = Depends(get_db),
                limit: int = 5,
-               skip: int = 0):
+               skip: int = 1):
     """Main page with todo list
     """
     logger.info("In home")
@@ -40,7 +40,7 @@ async def home(request: Request,
         todos = database.query(models.Todo).order_by(models.Todo.id.desc())
         return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
                                                          "limit": limit, "skip": skip,
-                                                         "count_pages": count_pages, "types": TodoTags})
+                                                         "count_pages": 0, "types": TodoTags})
     if count_pages * limit != count_todos:
         count_pages += 1
     if skip > count_pages:
@@ -54,22 +54,19 @@ async def home(request: Request,
                                                      "count_pages": count_pages, "types": TodoTags})
 
 
-@app.post("/add", status_code=status.HTTP_201_CREATED)
+@app.post("/add", status_code=status.HTTP_202_ACCEPTED)
 async def todo_add(request: Request,
-                   response: Response,
                    title: Annotated[str, Form(max_length=50)] = None,
-                   type: Annotated[str, Form()] = "Personal",
+                   type: Annotated[str, Form()] = "Education",
                    details: Annotated[str, Form(max_length=500)] = None,
                    database: Session = Depends(get_db)):
     """Add new todo
     """
-    if title is None or title.replace(" ", "") == "" or title == "":
-        response.status_code = status.HTTP_411_LENGTH_REQUIRED
-        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
-    todo = models.Todo(title=title, details=details, type=type)
-    logger.info(f"Creating todo: {todo}")
-    database.add(todo)
-    database.commit()
+    if title is not None and title.replace(" ", "") != "" or title == "":
+        todo = models.Todo(title=title, details=details, type=type)
+        logger.info(f"Creating todo: {todo}")
+        database.add(todo)
+        database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -86,7 +83,6 @@ async def todo_get(request: Request,
 @app.post("/edit/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
 async def todo_edit(
         request: Request,
-        response: Response,
         todo_id: int,
         title: Annotated[str, Form(max_length=50)] = None,
         details: Annotated[str, Form(max_length=500)] = None,
@@ -94,53 +90,46 @@ async def todo_edit(
         database: Session = Depends(get_db)):
     """Edit todo
     """
-    if title is None or title.replace(" ", "") == "":
-        response.status_code = status.HTTP_411_LENGTH_REQUIRED
-        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    logger.info(f"Editting todo: {todo}")
-    todo.title = title
-    todo.details = details
-    todo.completed = completed
-    database.commit()
+    if todo is not None and title is not None and title.replace(" ", "") != "":
+        todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+        logger.info(f"Editting todo: {todo}")
+        todo.title = title
+        todo.details = details
+        todo.completed = completed
+        database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.get("/delete/{todo_id}")
+@app.post("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
 async def todo_delete(request: Request,
-                      response: Response,
                       todo_id: int,
                       database: Session = Depends(get_db)):
     """Delete todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo is None:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
-    logger.info(f"Deleting todo: {todo}")
-    database.delete(todo)
-    database.commit()
+    if todo is not None:
+        logger.info(f"Deleting todo: {todo}")
+        database.delete(todo)
+        database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/checked/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
-async def todo_checked(request: Request,
-                       response: Response,
-                       todo_id: int,
-                       database: Session = Depends(get_db)):
+@app.post("/change_status/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+async def todo_change_status(request: Request,
+                             todo_id: int,
+                             database: Session = Depends(get_db)):
     """Change todo status on home page
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo is None:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
-    if todo.completed is True:
-        todo.completed = False
-        logger.info(f"Editting status: {todo} to not Done")
-    else:
-        todo.completed = True
-        logger.info(f"Editting status: {todo} to Done")
-    database.commit()
+    if todo is not None:
+        if todo.completed is True:
+            todo.completed = False
+            logger.info(f"Editting status: {todo} to not Done")
+        else:
+            todo.completed = True
+            logger.info(f"Editting status: {todo} to Done")
+        database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 

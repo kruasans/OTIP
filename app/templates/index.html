@@ -26,8 +26,12 @@
                 <span style="color:green;">{{todo.type}}</span>
                 <input type="checkbox" name="completed" onchange="change_status({{todo.id}})" {% if todo.completed %}checked{% endif %}>
                 <small>
-                    <a href="edit/{{ todo.id }}">Редактировать</a>
-                    <a href="delete/{{ todo.id }}">Удалить</a>
+                    <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
+                        <input type="submit" onclick="delete" value="Редактировать">
+                    </form>
+                    <form style="display:inline;" action="/delete/{{todo.id}}" method="post">
+                        <input type="submit" value="Удалить">
+                    </form>
                 </small>
             </div>
         {% endfor %}
