@@ -42,3 +42,7 @@ uvicorn main:app --reload
 
 ## Запуск dpcker-образа для разработчика
 `sudo docker run --rm -v "${PWD}/app":/code/app -p 80:80 2021-3-26-cha`
+
+## genarate
+`sudo docker build -t 2021-3-26-cha-generate -f DockerfileGenerator .`
+`sudo docker run --rm --network=host 2021-3-26-cha-generate`
