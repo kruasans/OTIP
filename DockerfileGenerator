@@ -1,0 +1,7 @@
+FROM 2021-3-26-cha
+
+RUN apt-get update && apt-get install curl -y && rm -rf /var/lib/apt/lists/*
+
+COPY app/script /code/script
+
+ENTRYPOINT ["/code/script/generation.sh"]
