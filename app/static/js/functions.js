@@ -4,7 +4,7 @@ function change_status(id){
     location.reload();
 }
 
-function delete(id){
+function delete_entry(id){
     var path = "/delete/" + id;
     fetch(path, {method : "DELETE"});
     location.reload();
@@ -13,6 +13,6 @@ function delete(id){
 function ask_and_submit(button, id){
     var answer = confirm("Вы действительно хотите удалить эту запись?");
     if (answer){
-        delete(id)
+        delete_entry(id)
     }
 }

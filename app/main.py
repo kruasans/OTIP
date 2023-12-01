@@ -101,7 +101,7 @@ async def todo_edit(
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.delete("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
 async def todo_delete(request: Request,
                       todo_id: int,
                       database: Session = Depends(get_db)):

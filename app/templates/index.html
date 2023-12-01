@@ -29,9 +29,7 @@
                     <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
                         <input type="submit" onclick="delete" value="Редактировать">
                     </form>
-                    <form style="display:inline;" action="/delete/{{todo.id}}" method="POST">
-                        <input type="button" value="Удалить" onclick="ask_and_submit(this)">
-                    </form>
+                    <input type="button" value="Удалить" onclick="ask_and_submit(this, {{ todo.id  }})">
                         <!--<form style="display:inline;" action="/delete/{{todo.id}}" method="post">
                             <input type="submit" value="Удалить">
                         </form>-->
