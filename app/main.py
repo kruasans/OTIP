@@ -12,6 +12,8 @@ from typing import Annotated
 from database import init_db, get_db, Session
 import models
 import pandas as pd
+import openpyxl
+import xlrd
 
 from tags import TodoTags
 
@@ -137,20 +139,20 @@ async def todo_change_status(request: Request,
 
 @app.get("/export")
 async def export(request: Request,database: Session = Depends(get_db)):
-    ids= database.query(models.Todo.id)
-    titles = database.query(models.Todo.title)
-    details = database.query(models.Todo.details)
-    complet = database.query(models.Todo.completed)
-    tags=database.query(models.Todo.type)
-    df = pd.DataFrame({
-        'id':ids,
-        'title':titles,
-        'details':details,
-        'completed':complet,
-        'tag':tags
-    })
-    df.to_excel("Export.xlsx")
-    return FileResponse(path='Export.xlsx', filename='Export.xlsx', media_type='multipart/form-data')
+    logger.info("Exporting")
+    todos = database.query(models.Todo)
+    lst = []
+    for todo in todos:
+        lst.append({
+            "id":todo.id,
+            "title": todo.title,
+            "details": todo.details,
+            "completed": todo.completed,
+            "tag": todo.type
+        })
+    df = pd.DataFrame(data=lst)
+    df.to_excel("Data.xlsx")
+    return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
 
 
 if __name__ == "__main__":
