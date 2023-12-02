@@ -1,11 +1,16 @@
 # fastapi-todo-lr1
 
+## установка с прокси и без
 ```bash
-# установка с прокси и без
 pip install --user --proxy http://login:pass@192.168.232.1:3128 -r requirements.txt
+```
+```bash
 pip install --user -r requirements.txt
-
+```
+```bash
 cd app
+```
+```bash
 uvicorn main:app --reload
 ```
 
@@ -35,14 +40,30 @@ uvicorn main:app --reload
 # Для работы
 
 ## Для сборки docker-образа
-`sudo docker build -t 2021-3-26-cha .`
+```bash
+sudo docker build -t 2021-3-26-cha .
+```
 
 ## Запуск djcker-образа для пользователя
-`sudo docker run --rm -p 80:80 2021-3-26-cha`
+```bash
+sudo docker run --rm -p 80:80 2021-3-26-cha
+```
 
 ## Запуск dpcker-образа для разработчика
-`sudo docker run --rm -v "${PWD}/app":/code/app -p 80:80 2021-3-26-cha`
+```bash
+sudo docker run --rm -v "${PWD}/app":/code/app -p 80:80 2021-3-26-cha
+```
 
-## genarate
-`sudo docker build -t 2021-3-26-cha-generate -f DockerfileGenerator .`
-`sudo docker run --rm --network=host 2021-3-26-cha-generate`
+# genaration
+## Build generator
+```bash
+sudo docker build -t 2021-3-26-cha-generate -f DockerfileGenerator .
+```
+## Example without argument
+```bash
+sudo docker run --rm --network=host 2021-3-26-cha-generate
+```
+## Example with argument([num] - positive integer)
+```bash
+sudo docker run --rm --network=host 2021-3-26-cha-generate [num]
+```
