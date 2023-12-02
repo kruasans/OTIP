@@ -46,3 +46,4 @@ uvicorn main:app --reload
 ## genarate
 `sudo docker build -t 2021-3-26-cha-generate -f DockerfileGenerator .`
 `sudo docker run --rm --network=host 2021-3-26-cha-generate`
+`sudo docker run --rm --network=host 2021-3-26-cha-generate 10`

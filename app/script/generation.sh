@@ -2,7 +2,13 @@
 
 ARRAY=('a' 'b' 'c' 'd' 'e' 'f' 'g' 'h' 'i' 'j' 'k' 'l' 'm' 'n' 'o' 'p' 'q' 'r' 's' 't' 'u' 'v' 'w' 'x' 'y' 'z')
 TAGS=("Education" "Personal" "Plan")
-for i in {1..20}
+if [[ ! $1 ]] || [[ $1 -lt 0 ]]
+then
+    COUNT=20
+else
+    COUNT="$1"
+fi
+for ((i=1; i <= COUNT; i++))
 do
   text=""
   type="${TAGS[$RANDOM % ${#TAGS[@]}]}"
