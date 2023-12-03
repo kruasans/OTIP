@@ -18,8 +18,8 @@ class Todo(Base):
     details = Column(Text)
     completed = Column(Boolean, default=False)
     type = Column(Text)
-    date_creation = Column(Text, details="date of creation", default=date.today())
-    date_completion = Column(Text, details="date of completion", default=None)
+    date_creation = Column(Text, default=date.today())
+    date_completion = Column(Text, default="-1")
 
     def __repr__(self):
         return f'<Todo {self.id}>'

@@ -30,11 +30,15 @@
                         <input type="submit" onclick="delete" value="Редактировать">
                     </form>
                     <input type="button" value="Удалить" onclick="ask_and_submit(this, {{ todo.id  }})">
-                        <!--<form style="display:inline;" action="/delete/{{todo.id}}" method="post">
-                            <input type="submit" value="Удалить">
-                        </form>-->
                 </small>
+                <br>
+                <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
+                <br>
+                {% if todo.date_completion != "-1" %}
+                    <span style="color:green;">Дата выполнения :{{todo.date_completion}}</span>
+                {% endif %}
             </div>
+        <br>
         {% endfor %}
     </div>
     <div>
