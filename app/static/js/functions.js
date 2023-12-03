@@ -16,3 +16,16 @@ function ask_and_submit(button, id){
         delete_entry(id)
     }
 }
+
+function isNumber(str){
+    if (typeof str != "string") return false // we only process strings!
+    return !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
+    !isNaN(parseFloat(str))
+}
+
+function generation(count){
+    if(!Number.isInteger(count))
+        return;
+    var path = "/generate?count=" + count;
+    fetch(path, {method : "POST"});
+}
