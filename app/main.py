@@ -64,7 +64,7 @@ async def todo_add(request: Request,
     """Add new todo
     """
     if title is not None and title.replace(" ", "") != "" or title == "":
-        todo = models.Todo(title=title, details=details, type=type, )
+        todo = models.Todo(title=title, details=details, type=type)
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
