@@ -2,6 +2,7 @@
 """
 from sqlalchemy import Column, Integer, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
+from datetime import date
 
 from tags import TodoTags
 
@@ -17,6 +18,8 @@ class Todo(Base):
     details = Column(Text)
     completed = Column(Boolean, default=False)
     type = Column(Text)
+    date_creation = Column(Text, default=date.today())
+    date_completion = Column(Text, default="-1")
 
     def __repr__(self):
         return f'<Todo {self.id}>'

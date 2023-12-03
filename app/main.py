@@ -10,6 +10,7 @@ import uvicorn
 from typing import Annotated
 from database import init_db, get_db, Session
 import models
+from datetime import date
 
 from tags import TodoTags
 
@@ -125,10 +126,12 @@ async def todo_change_status(request: Request,
     if todo is not None:
         if todo.completed is True:
             todo.completed = False
+            todo.date_completion = "-1"
             logger.info(f"Editting status: {todo} to not Done")
         else:
             todo.completed = True
             logger.info(f"Editting status: {todo} to Done")
+            todo.date_completion = date.today()
         database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
