@@ -6,15 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ToDo App</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/footer.css') }}">
 </head>
-    <body>
-        <main>
-            <h1>ToDo - список задач</h1>
-            <br>
-            {% block content %}
+<body>
+    <main>
+        <h1>ToDo - список задач</h1>
+        <br>
+        {% block content %}
 
-            {% endblock content %}
-        </main>
-    </body>
+        {% endblock content %}
+    </main>
+    <footer class="footer">
+        <ul class="hrefs_to_other_pages">
+            <li><a href="/">Домой</a></li>
+            <li><a href="/list">Список</a></li>
+            <li><a href="/export">Экспорт</a></li>
+            <li><a href="/visualization">Визуализация</a></li>
+        </ul>
+    </footer>
+</body>
 <script src="static/js/functions.js"></script>
 </html>
