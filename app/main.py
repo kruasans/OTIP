@@ -151,7 +151,9 @@ async def export(request: Request,database: Session = Depends(get_db)):
             "title": todo.title,
             "details": todo.details,
             "completed": todo.completed,
-            "tag": todo.type
+            "tag": todo.type,
+            "date_creation":todo.date_creation,
+            "date_completion":todo.date_completion
         })
     df = pd.DataFrame(data=lst)
     df.to_excel("Data.xlsx")
