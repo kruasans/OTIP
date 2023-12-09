@@ -5,11 +5,15 @@ from loguru import logger
 from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from typing import Annotated
 from database import init_db, get_db, Session
 import models
+import pandas as pd
+import openpyxl
+import xlrd
 from datetime import date
 
 from tags import TodoTags
@@ -134,6 +138,26 @@ async def todo_change_status(request: Request,
             todo.date_completion = date.today()
         database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/export")
+async def export(request: Request,database: Session = Depends(get_db)):
+    logger.info("Exporting")
+    todos = database.query(models.Todo)
+    lst = []
+    for todo in todos:
+        lst.append({
+            "id":todo.id,
+            "title": todo.title,
+            "details": todo.details,
+            "completed": todo.completed,
+            "tag": todo.type,
+            "date_creation":todo.date_creation,
+            "date_completion":todo.date_completion
+        })
+    df = pd.DataFrame(data=lst)
+    df.to_excel("Data.xlsx")
+    return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
 
 
 if __name__ == "__main__":
