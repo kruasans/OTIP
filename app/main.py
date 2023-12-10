@@ -126,6 +126,11 @@ async def todo_edit(
         todo.title = title
         todo.details = details
         todo.completed = completed
+
+        if completed is False:
+            todo.date_completion="-1"
+        else:
+            todo.date_completion=date.today()
         database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
