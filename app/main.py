@@ -1,5 +1,7 @@
 """Main of todo app
 """
+import random
+
 from loguru import logger
 
 from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
@@ -11,6 +13,7 @@ from typing import Annotated
 from database import init_db, get_db, Session
 import models
 from datetime import date
+import os
 
 from tags import TodoTags
 
@@ -133,6 +136,22 @@ async def todo_change_status(request: Request,
             logger.info(f"Editting status: {todo} to Done")
             todo.date_completion = date.today()
         database.commit()
+    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/generate")
+async def generate_todo(request: Request,
+                        database: Session = Depends(get_db),
+                        count: Annotated[int, None] = 10):
+    titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
+              "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар", "закладка",
+              "оскопление", "прибивание"]
+    types = ["Education", "Personal", "Plan"]
+
+    for i in range(0, count):
+        title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
+        type = types[random.randint(0, 2)]
+        await todo_add(request, title, type, None, database)
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 

@@ -24,8 +24,17 @@ function isNumber(str){
 }
 
 function generation(count){
-    if(!Number.isInteger(count))
-        return;
-    var path = "/generate?count=" + count;
+    var path;
+    console.log("here1");
+    console.log(count);
+    if(!Number.isInteger(count)){
+        if(count == ""){
+            fetch("/generate", {method : "POST"});
+            location.reload();
+            return;
+        }
+    }
+    path = "/generate?count=" + count;
     fetch(path, {method : "POST"});
+    location.reload();
 }
