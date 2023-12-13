@@ -13,4 +13,11 @@
         <button type="submit">Добавить</button>
     </form>
 
+
+    <div style="margin: 20px">
+        <span>Генерация задач</span>
+        <input type="text" id="todo_count">
+        <input type="button" value="Сгенирировать" onclick="generation(document.getElementById('todo_count').value)">
+    </div>
+
 {% endblock content %}

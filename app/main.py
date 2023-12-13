@@ -1,5 +1,7 @@
 """Main of todo app
 """
+import random
+
 from loguru import logger
 from visualization import visualize
 from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
@@ -37,23 +39,6 @@ async def home(request: Request,
                limit: int = 5,
                skip: int = 1):
     """Main page with todo list
-    """
-    # logger.info("In home")
-    # count_todos = database.query(models.Todo).count()
-    # count_pages = int(count_todos / limit)
-    # if count_todos < 10:
-    #     todos = database.query(models.Todo).order_by(models.Todo.id.desc())
-    #     return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
-    #                                                      "limit": limit, "skip": skip,
-    #                                                      "count_pages": 0, "types": TodoTags})
-    # if count_pages * limit != count_todos:
-    #     count_pages += 1
-    # if skip > count_pages:
-    #     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(0).limit(limit)
-    #     return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
-    #                                                      "limit": limit, "skip": skip,
-    #                                                      "count_pages": count_pages, "types": TodoTags})
-    # todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(limit * skip).limit(limit)
     return templates.TemplateResponse("index.html", {"request": request, "types": TodoTags})
 
 
@@ -169,6 +154,22 @@ async def todo_change_status(request: Request,
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.post("/generate")
+async def generate_todo(request: Request,
+                        database: Session = Depends(get_db),
+                        count: Annotated[int, None] = 10):
+    titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
+              "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар", "закладка",
+              "оскопление", "прибивание"]
+    types = ["Education", "Personal", "Plan"]
+
+    for i in range(0, count):
+        title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
+        type = types[random.randint(0, 2)]
+        await todo_add(request, title, type, None, database)
+    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.get("/export")
 async def export(request: Request,database: Session = Depends(get_db)):
     logger.info("Exporting")
@@ -222,6 +223,7 @@ async def vis(request: Request,todo_id:int,database: Session = Depends(get_db)):
     title=str(todo_title).split("\'")[1]
     visualize(title,"Visualization.png")
     return FileResponse(path='Visualization.png', filename='Visualization.png', media_type='image/png')
+
 
 
 if __name__ == "__main__":
