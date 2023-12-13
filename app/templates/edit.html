@@ -9,7 +9,12 @@
         <textarea name="details" rows="5">{{todo.details}}</textarea>
         <label for="completed">Выполнено?</label>
         <input type="checkbox" name="completed" {% if todo.completed %}checked{% endif %}>
-
+        <div>
+        <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
+        </div>
+        {% if todo.date_completion != "-1" %}
+                    <span style="color:green;">Дата выполнения :{{todo.date_completion}}</span>
+        {% endif %}
         <button type="submit">Сохранить</button>
     </form>
 {% endblock content %}
