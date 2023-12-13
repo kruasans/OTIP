@@ -18,6 +18,7 @@ import openpyxl
 import xlrd
 from datetime import date
 import os
+from os import path
 from tags import TodoTags
 
 init_db()
@@ -38,7 +39,7 @@ async def home(request: Request,
                database: Session = Depends(get_db),
                limit: int = 5,
                skip: int = 1):
-    """Main page with todo list
+    """Main page with todo list"""
     return templates.TemplateResponse("index.html", {"request": request, "types": TodoTags})
 
 
@@ -196,7 +197,10 @@ async def visualization(request: Request,
                limit: int = 5,
                skip: int = 1):
     logger.info("Visualizating")
-    os.remove("Visualization.png")
+    if path.exists("Visualization.png"):
+        os.remove("Visualization.png")
+    if path.exists("Data.xlsx"):
+        os.remove("Data.xlsx")
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
     if count_todos < 10:
@@ -223,7 +227,6 @@ async def vis(request: Request,todo_id:int,database: Session = Depends(get_db)):
     title=str(todo_title).split("\'")[1]
     visualize(title,"Visualization.png")
     return FileResponse(path='Visualization.png', filename='Visualization.png', media_type='image/png')
-
 
 
 if __name__ == "__main__":
