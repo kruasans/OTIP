@@ -24,7 +24,9 @@
                 <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
                 <br>
                 {% if todo.date_completion != "-1" %}
-                    <span style="color:green;">Дата выполнения :{{todo.date_completion}}</span>
+                    <span style="color:green;">Дата выполнения :{{todo.date_completion}} </span>
+                    <br>
+                    <span style="color:green;">Выполнил: {{todo.fullname}} </span>
                 {% endif %}
             </div>
         <br>

@@ -20,6 +20,7 @@ class Todo(Base):
     type = Column(Text)
     date_creation = Column(Text, default=date.today())
     date_completion = Column(Text, default="-1")
+    fullname = Column(Text, default="user")
 
     def __repr__(self):
         return f'<Todo {self.id}>'
