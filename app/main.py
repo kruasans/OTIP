@@ -19,7 +19,7 @@ import xlrd
 from datetime import date
 import os
 from os import path
-from tags import TodoTags
+from tags import TodoTags, Users
 
 init_db()
 
@@ -40,7 +40,10 @@ async def home(request: Request,
                limit: int = 5,
                skip: int = 1):
     """Main page with todo list"""
-    return templates.TemplateResponse("index.html", {"request": request, "types": TodoTags})
+    count_cha = database.query(models.Todo).filter(models.Todo.fullname == "2021-3-26-cha").filter(models.Todo.completed == True).count()
+    count_zva = database.query(models.Todo).filter(models.Todo.fullname == "2021-3-04-zva").filter(models.Todo.completed == True).count()
+    count_pro = database.query(models.Todo).filter(models.Todo.fullname == "2021-3-12-pro").filter(models.Todo.completed == True).count()
+    return templates.TemplateResponse("index.html", {"request": request, "types": TodoTags, "fullnames": Users, "cha": count_cha, "zva": count_zva, "pro": count_pro})
 
 
 @app.get("/list")
@@ -74,11 +77,12 @@ async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = "Education",
                    details: Annotated[str, Form(max_length=500)] = None,
+                   fullname: Annotated[str, Form()] = "2021-3-26-cha",
                    database: Session = Depends(get_db)):
     """Add new todo
     """
     if title is not None and title.replace(" ", "") != "" or title == "":
-        todo = models.Todo(title=title, details=details, type=type)
+        todo = models.Todo(title=title, details=details, type=type, fullname=fullname)
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
@@ -92,7 +96,7 @@ async def todo_get(request: Request,
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     logger.info(f"Getting todo: {todo}")
-    return templates.TemplateResponse("edit.html", {"request": request, "todo": todo})
+    return templates.TemplateResponse("edit.html", {"request": request, "todo": todo, "fullnames": Users})
 
 
 @app.post("/edit/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -102,6 +106,7 @@ async def todo_edit(
         title: Annotated[str, Form(max_length=50)] = None,
         details: Annotated[str, Form(max_length=500)] = None,
         completed: bool = Form(False),
+        fullname: Annotated[str, Form()] = "2021-3-26-cha",
         database: Session = Depends(get_db)):
     """Edit todo
     """
@@ -112,6 +117,7 @@ async def todo_edit(
         todo.title = title
         todo.details = details
         todo.completed = completed
+        todo.fullname = fullname
 
         if completed is False:
             todo.date_completion="-1"
