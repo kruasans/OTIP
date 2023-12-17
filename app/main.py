@@ -78,11 +78,21 @@ async def todo_add(request: Request,
                    type: Annotated[str, Form()] = "Education",
                    details: Annotated[str, Form(max_length=500)] = None,
                    fullname: Annotated[str, Form()] = "2021-3-26-cha",
-                   database: Session = Depends(get_db)):
+                   date_creation: Annotated[str, Form()] = date.today(),
+                   completed: Annotated[bool, Form()] = False,
+                   date_completion: Annotated[str, Form()] = "-1",
+                   database: Session = Depends(get_db),
+                   ):
     """Add new todo
     """
     if title is not None and title.replace(" ", "") != "" or title == "":
-        todo = models.Todo(title=title, details=details, type=type, fullname=fullname)
+        todo = models.Todo(title=title,
+                           details=details,
+                           type=type,
+                           fullname=fullname,
+                           completed=completed,
+                           date_creation=date_creation,
+                           date_completion=date_completion)
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
@@ -196,6 +206,24 @@ async def export(request: Request,database: Session = Depends(get_db)):
     df.to_excel("Data.xlsx")
     return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
 
+
+@app.post("/upload")
+async def upload(request: Request,
+                 database: Session = Depends(get_db)):
+    df = pd.read_excel(r"Data.xlsx", index_col=0, )
+    count_str = len(df.title)
+    for i in range(0, count_str):
+        await todo_add(request=request,
+                 title=df.title[i],
+                 type=df.tag[i],
+                 details=df.details[i],
+                 date_creation=df.date_creation[i],
+                 date_completion=df.date_completion[i],
+                 completed=bool(df.completed[i]),
+                 # fullname=df.fullname[i],
+                 database=database)
+
+    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/visualization")
 async def visualization(request: Request,
