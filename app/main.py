@@ -103,21 +103,22 @@ async def todo_edit(
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.delete("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.delete("/delete/{todo_id}")
 async def todo_delete(request: Request,
                       todo_id: int,
                       database: Session = Depends(get_db)):
     """Delete todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo is not None:
-        logger.info(f"Deleting todo: {todo}")
-        database.delete(todo)
-        database.commit()
+    if todo is None:
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    logger.info(f"Deleting todo: {todo}")
+    database.delete(todo)
+    database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/change_status/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/change_status/{todo_id}")
 async def todo_change_status(request: Request,
                              todo_id: int,
                              database: Session = Depends(get_db)):
