@@ -54,7 +54,7 @@ async def home(request: Request,
                                                      "count_pages": count_pages, "types": TodoTags})
 
 
-@app.post("/add", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/add")
 async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = "Education",
@@ -62,11 +62,12 @@ async def todo_add(request: Request,
                    database: Session = Depends(get_db)):
     """Add new todo
     """
-    if title is not None and title.replace(" ", "") != "" or title == "":
-        todo = models.Todo(title=title, details=details, type=type)
-        logger.info(f"Creating todo: {todo}")
-        database.add(todo)
-        database.commit()
+    if title is None:
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    todo = models.Todo(title=title, details=details, type=type)
+    logger.info(f"Creating todo: {todo}")
+    database.add(todo)
+    database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
