@@ -26,7 +26,7 @@ logger = logger.opt(colors=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/")
+@app.get("/", status_code=status.HTTP_200_OK)
 async def home(request: Request,
                database: Session = Depends(get_db),
                limit: int = 5,
@@ -36,7 +36,7 @@ async def home(request: Request,
     logger.info("In home")
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
-    if count_todos < 10:
+    if count_todos < limit:
         todos = database.query(models.Todo).order_by(models.Todo.id.desc())
         return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
                                                          "limit": limit, "skip": skip,
@@ -54,7 +54,7 @@ async def home(request: Request,
                                                      "count_pages": count_pages, "types": TodoTags})
 
 
-@app.post("/add", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/add")
 async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = "Education",
@@ -62,25 +62,29 @@ async def todo_add(request: Request,
                    database: Session = Depends(get_db)):
     """Add new todo
     """
-    if title is not None and title.replace(" ", "") != "" or title == "":
-        todo = models.Todo(title=title, details=details, type=type)
-        logger.info(f"Creating todo: {todo}")
-        database.add(todo)
-        database.commit()
+    if title is None:
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    todo = models.Todo(title=title, details=details, type=type)
+    logger.info(f"Creating todo: {todo}")
+    database.add(todo)
+    database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.get("/edit/{todo_id}")
+@app.get("/edit/{todo_id}", status_code=status.HTTP_200_OK)
 async def todo_get(request: Request,
                    todo_id: int, database: Session = Depends(get_db)):
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        logger.info(f"Getting not existing todo: {todo}")
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
     return templates.TemplateResponse("edit.html", {"request": request, "todo": todo})
 
 
-@app.post("/edit/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/edit/{todo_id}")
 async def todo_edit(
         request: Request,
         todo_id: int,
@@ -91,31 +95,33 @@ async def todo_edit(
     """Edit todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo is not None and title is not None and title.replace(" ", "") != "":
-        todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-        logger.info(f"Editting todo: {todo}")
-        todo.title = title
-        todo.details = details
-        todo.completed = completed
-        database.commit()
+    if todo is None or title is None:
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    logger.info(f"Editting todo: {todo}")
+    todo.title = title
+    todo.details = details
+    todo.completed = completed
+    database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.delete("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.delete("/delete/{todo_id}")
 async def todo_delete(request: Request,
                       todo_id: int,
                       database: Session = Depends(get_db)):
     """Delete todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo is not None:
-        logger.info(f"Deleting todo: {todo}")
-        database.delete(todo)
-        database.commit()
+    if todo is None:
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    logger.info(f"Deleting todo: {todo}")
+    database.delete(todo)
+    database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/change_status/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/change_status/{todo_id}")
 async def todo_change_status(request: Request,
                              todo_id: int,
                              database: Session = Depends(get_db)):
