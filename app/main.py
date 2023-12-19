@@ -81,7 +81,7 @@ async def todo_get(request: Request,
     return templates.TemplateResponse("edit.html", {"request": request, "todo": todo})
 
 
-@app.post("/edit/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/edit/{todo_id}")
 async def todo_edit(
         request: Request,
         todo_id: int,
@@ -92,13 +92,14 @@ async def todo_edit(
     """Edit todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    if todo is not None and title is not None and title.replace(" ", "") != "":
-        todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-        logger.info(f"Editting todo: {todo}")
-        todo.title = title
-        todo.details = details
-        todo.completed = completed
-        database.commit()
+    if todo is None or title is None:
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    logger.info(f"Editting todo: {todo}")
+    todo.title = title
+    todo.details = details
+    todo.completed = completed
+    database.commit()
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
