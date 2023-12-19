@@ -26,7 +26,7 @@ logger = logger.opt(colors=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/")
+@app.get("/", status_code=status.HTTP_200_OK)
 async def home(request: Request,
                database: Session = Depends(get_db),
                limit: int = 5,
@@ -36,7 +36,7 @@ async def home(request: Request,
     logger.info("In home")
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
-    if count_todos < 10:
+    if count_todos < limit:
         todos = database.query(models.Todo).order_by(models.Todo.id.desc())
         return templates.TemplateResponse("index.html", {"request": request, "todos": todos,
                                                          "limit": limit, "skip": skip,
@@ -71,12 +71,15 @@ async def todo_add(request: Request,
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.get("/edit/{todo_id}")
+@app.get("/edit/{todo_id}", status_code=status.HTTP_200_OK)
 async def todo_get(request: Request,
                    todo_id: int, database: Session = Depends(get_db)):
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        logger.info(f"Getting not existing todo: {todo}")
+        return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
     return templates.TemplateResponse("edit.html", {"request": request, "todo": todo})
 
