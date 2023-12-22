@@ -17,7 +17,7 @@ import models
 import pandas as pd
 import openpyxl
 import xlrd
-from datetime import date
+from datetime import date, datetime
 import os
 from os import path
 from tags import TodoTags, Users
@@ -86,26 +86,21 @@ async def todo_add(request: Request,
                    type: Annotated[str, Form()] = "Education",
                    details: Annotated[str, Form(max_length=500)] = None,
                    fullname: Annotated[str, Form()] = "2021-3-26-cha",
-                   date_creation: Annotated[str, Form()] = date.today(),
+                   date_creation: Annotated[date, Form()] = date.today(),
                    completed: Annotated[bool, Form()] = False,
-                   date_completion: Annotated[str, Form()] = None,
+                   date_completion: Annotated[date, Form()] = None,
                    database: Session = Depends(get_db),
                    ):
     """Add new todo
     """
-    date_creation = date_creation.split(" ")[0]
-    date_creation = date_creation.split("-")
-    if date_completion is not None:
-        date_completion = date_completion.split(" ")[0]
-        date_completion = date_completion.split("-")
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
                            type=type,
                            fullname=fullname,
                            completed=completed,
-                           date_creation=date(year=int(date_creation[0]), month=int(date_creation[1]), day=int(date_creation[2])),
-                           date_completion=date(year=int(date_completion[0]), month=int(date_completion[1]), day=int(date_completion[2])) if date_completion is not None else None)
+                           date_creation=date_creation,
+                           date_completion=date_completion)
 
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
@@ -222,22 +217,32 @@ async def export(request: Request, database: Session = Depends(get_db)):
     return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
 
 
-@app.post("/upload")
+@app.post("/upload/")
 async def upload(request: Request,
+                 filename: str = "asd",
                  database: Session = Depends(get_db)):
-    df = pd.read_excel(r"Data.xlsx", index_col=0, dtype={'date_completion': str, 'date_creation': str})
+    # if path.exists(f"{filename}"):
+    #     logger.info(f"Error! Trying to import not existing file {filename}.")
+    #     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+
+    df = pd.read_excel(r"Data.xlsx",
+                       converters={'date_creation': pd.to_datetime,
+                                   'date_completion': pd.to_datetime})
+
     count_str = len(df.title)
     for i in range(0, count_str):
+        print(type(df.date_creation[i]))
+        print(df.date_creation[i])
         await todo_add(request=request,
                        title=df.title[i],
                        type=df.tag[i],
                        details=df.details[i],
                        date_creation=df.date_creation[i],
-                       date_completion=df.date_completion[i] if not df.date_completion[i] is numpy.NaN else None,
+                       date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
                        completed=bool(df.completed[i]),
                        # fullname=df.fullname[i],
                        database=database)
-
+    logger.info(f"File {filename} imported.")
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
