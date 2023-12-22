@@ -15,8 +15,8 @@ from typing import Annotated
 from database import init_db, get_db, Session
 import models
 import pandas as pd
-import openpyxl
-import xlrd
+# import openpyxl
+# import xlrd
 from datetime import date, datetime
 import os
 from os import path
@@ -208,9 +208,10 @@ async def export(request: Request, database: Session = Depends(get_db)):
             "title": todo.title,
             "details": todo.details,
             "completed": todo.completed,
-            "tag": todo.type,
+            "type": todo.type,
             "date_creation": todo.date_creation,
-            "date_completion": todo.date_completion
+            "date_completion": todo.date_completion,
+            "fullname": todo.fullname
         })
     df = pd.DataFrame(data=lst)
     df.to_excel("Data.xlsx")
@@ -235,12 +236,12 @@ async def upload(request: Request,
         print(df.date_creation[i])
         await todo_add(request=request,
                        title=df.title[i],
-                       type=df.tag[i],
+                       type=df.type[i],
                        details=df.details[i],
                        date_creation=df.date_creation[i],
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
                        completed=bool(df.completed[i]),
-                       # fullname=df.fullname[i],
+                       fullname=df.fullname[i],
                        database=database)
     logger.info(f"File {filename} imported.")
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
