@@ -196,7 +196,7 @@ async def generate_todo(request: Request,
     for i in range(0, count):
         title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
         type = types[random.randint(0, 2)]
-        await todo_add(request, title, type, None, database=database, source="Generate")
+        await todo_add(request, title, type, None, database=database, source=Source.source_generated.value)
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -240,6 +240,7 @@ async def upload(request: Request,
         await todo_add(request=request,
                        title=df.title[i],
                        type=df.type[i],
+                       source=Source.source_exported.value,
                        details=df.details[i],
                        date_creation=df.date_creation[i],
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
