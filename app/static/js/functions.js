@@ -38,3 +38,12 @@ function generation(count){
     fetch(path, {method : "POST"});
     location.reload();
 }
+
+function upload(fileName){
+    if(fileName == ""){
+        return;
+    }
+    var path = "/upload/" + fileName;
+    console.log(fileName);
+    fetch(path  , {method : "POST"});
+}

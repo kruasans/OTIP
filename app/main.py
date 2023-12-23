@@ -218,15 +218,15 @@ async def export(request: Request, database: Session = Depends(get_db)):
     return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
 
 
-@app.post("/upload/")
+@app.post("/upload/{filename}")
 async def upload(request: Request,
-                 filename: str = "asd",
+                 filename: str,
                  database: Session = Depends(get_db)):
-    # if path.exists(f"{filename}"):
-    #     logger.info(f"Error! Trying to import not existing file {filename}.")
-    #     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    if not path.exists(f"{filename}"):
+        logger.info(f"Error! Trying to import not existing file {filename}.")
+        return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
 
-    df = pd.read_excel(r"Data.xlsx",
+    df = pd.read_excel(filename,
                        converters={'date_creation': pd.to_datetime,
                                    'date_completion': pd.to_datetime})
 
@@ -283,6 +283,11 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
     title = str(todo_title).split("\'")[1]
     visualize(title, "Visualization.png")
     return FileResponse(path='Visualization.png', filename='Visualization.png', media_type='image/png')
+
+
+@app.get("/pageFile")
+async def page_file(request: Request):
+    return templates.TemplateResponse("pageFile.html", {"request": request})
 
 
 if __name__ == "__main__":
