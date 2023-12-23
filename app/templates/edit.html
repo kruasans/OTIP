@@ -16,10 +16,10 @@
             {% endfor %}
         </select>
         <div>
-        <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
+        <span style="color:green;">Дата создания: {{todo.date_creation}}</span>
         </div>
-        {% if todo.date_completion != "-1" %}
-                    <span style="color:green;">Дата выполнения :{{todo.date_completion}}</span>
+        {% if todo.completed == True %}
+                    <span style="color:green;">Дата выполнения: {{todo.date_completion}}</span>
         {% endif %}
         <button type="submit">Сохранить</button>
     </form>

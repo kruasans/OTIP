@@ -20,7 +20,7 @@ import pandas as pd
 from datetime import date, datetime
 import os
 from os import path
-from tags import TodoTags, Users
+from tags import TodoTags, Users, Source
 
 from sqlalchemy import Date
 
@@ -83,9 +83,10 @@ async def list_todo(request: Request,
 @app.post("/add", status_code=status.HTTP_202_ACCEPTED)
 async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
-                   type: Annotated[str, Form()] = "Education",
+                   type: Annotated[str, Form()] = TodoTags.education.value,
+                   source: Annotated[str, Form()] = Source.source_created.value,
                    details: Annotated[str, Form(max_length=500)] = None,
-                   fullname: Annotated[str, Form()] = "2021-3-26-cha",
+                   fullname: Annotated[str, Form()] = Users.user1.value,
                    date_creation: Annotated[date, Form()] = date.today(),
                    completed: Annotated[bool, Form()] = False,
                    date_completion: Annotated[date, Form()] = None,
@@ -94,9 +95,11 @@ async def todo_add(request: Request,
     """Add new todo
     """
     if title is not None and title.replace(" ", "") != "" or title == "":
+        print(source)
         todo = models.Todo(title=title,
                            details=details,
                            type=type,
+                           source=source,
                            fullname=fullname,
                            completed=completed,
                            date_creation=date_creation,
@@ -193,7 +196,12 @@ async def generate_todo(request: Request,
     for i in range(0, count):
         title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
         type = types[random.randint(0, 2)]
-        await todo_add(request, title, type, None, database=database)
+        await todo_add(request=request,
+                       title=title,
+                       type=title,
+                       source=Source.source_generated.value,
+                       details=None,
+                       database=database)
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -237,6 +245,7 @@ async def upload(request: Request,
         await todo_add(request=request,
                        title=df.title[i],
                        type=df.type[i],
+                       source=Source.source_exported.value,
                        details=df.details[i],
                        date_creation=df.date_creation[i],
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
