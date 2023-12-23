@@ -18,6 +18,7 @@ class Todo(Base):
     details = Column(Text)
     completed = Column(Boolean, default=False)
     type = Column(Text)
+    source = Column(Text)
     date_creation = Column(Date, default=date.today())
     date_completion = Column(Date, default=None)
     fullname = Column(Text, default="user")
