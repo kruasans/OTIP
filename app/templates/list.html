@@ -21,6 +21,8 @@
                     <input type="button" value="Удалить" onclick="ask_and_submit(this, {{ todo.id  }})">
                 </small>
                 <br>
+                <span>Источник: {{ todo.source }}</span>
+                <br>
                 <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
                 <br>
                 {% if todo.completed == True %}

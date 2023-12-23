@@ -196,7 +196,12 @@ async def generate_todo(request: Request,
     for i in range(0, count):
         title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
         type = types[random.randint(0, 2)]
-        await todo_add(request, title, type, None, database=database, source=Source.source_generated.value)
+        await todo_add(request=request,
+                       title=title,
+                       type=title,
+                       source=Source.source_generated.value,
+                       details=None,
+                       database=database)
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
