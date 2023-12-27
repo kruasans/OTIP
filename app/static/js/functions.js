@@ -43,6 +43,7 @@ function upload(fileName){
     if(fileName == ""){
         return;
     }
+    console.log(fileName)
     var path = "/upload/" + fileName;
     console.log(fileName);
     fetch(path  , {method : "POST"});

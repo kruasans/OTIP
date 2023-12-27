@@ -7,7 +7,9 @@
     </form> <br>
     <hr>
     <br>
-    <textarea id="fileName" rows="2" placeholder="Введите название фалйа для импорта"></textarea><br></br>
-    <button type="button" onclick="upload(document.getElementById('fileName').value)">Импорт</button>
+    <label for="fileinput">Выберите файл для импорта:</label>
+    <input type="file" id="fileinput" name="file" accept=".xlsx, .xls, .csv">
+    <br><br>
+    <button type="submit" onclick="upload(document.getElementById('fileinput').files[0].name)">Импорт</button>
 
 {% endblock content %}
