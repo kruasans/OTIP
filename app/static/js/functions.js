@@ -1,9 +1,3 @@
-function change_status(id){
-    var path = "/change_status/" + id;
-    fetch(path, {method : "POST"});
-    location.reload();
-}
-
 function delete_entry(id){
     var path = "/delete/" + id;
     fetch(path, {method : "DELETE"});

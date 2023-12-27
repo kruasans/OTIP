@@ -98,8 +98,13 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
+    # details = str(details)
+    # print(details)
+    # if details == "nan":
+    #     print("true")
+    # else:
+    #     print("false")
     if title is not None and title.replace(" ", "") != "" or title == "":
-        print(source)
         todo = models.Todo(title=title,
                            details=details,
                            type=type,
@@ -203,7 +208,7 @@ async def generate_todo(request: Request,
         type = types[random.randint(0, 2)]
         await todo_add(request=request,
                        title=title,
-                       type=title,
+                       type=type,
                        source=Source.source_generated.value,
                        details=None,
                        database=database)
@@ -249,13 +254,11 @@ async def upload(request: Request,
 
     count_str = len(df.title)
     for i in range(0, count_str):
-        print(type(df.date_creation[i]))
-        print(df.date_creation[i])
         await todo_add(request=request,
                        title=df.title[i],
                        type=df.type[i],
                        source=Source.source_exported.value,
-                       details=df.details[i],
+                       details=df.details[i] if str(df.details[i]) != "nan" else "",
                        date_creation=df.date_creation[i],
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
                        completed=bool(df.completed[i]),

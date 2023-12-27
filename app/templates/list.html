@@ -2,49 +2,49 @@
 
 {% block content %}
 
- <br>
-    <h2>Задачи</h2>
+    <br>
+    <h2 style="margin-left: 40px">Задачи</h2>
     <div>
         {% for todo in todos %}
             <div class="title">
-                {% if todo.completed %}
-                    <strike>{{ todo.title }}</strike>
-                {% else %}
-                    {{ todo.title }}
-                {% endif %}
-                <span style="color:green;">{{todo.type}}</span>
-                <form action="change_status/{{ todo.id }}" method="post">
+                <div class="text-container">
                     {% if todo.completed %}
-                        <input style="background-color: red" type="submit" name="completed" value="Выполнить">
+                        <strike>{{ todo.title }}</strike>
                     {% else %}
-                        <input style="background-color: chartreuse" type="submit" name="completed" value="Выполнить">
+                        {{ todo.title }}
                     {% endif %}
+                    <span style="color:green;">{{ todo.type }}</span>
+                    <br>
+                    <span>Источник: {{ todo.source }}</span>
+                    <br>
+                    <span style="color:green;">Дата создания: {{ todo.date_creation }}</span>
+                    <br>
+                    {% if todo.completed == True %}
+                        <span style="color:green;">Дата выполнения: {{ todo.date_completion }} </span>
+                        <br>
+                        <span style="color:green;">Выполнил: {{ todo.fullname }} </span>
+                    {% endif %}
+                </div>
+                <form action="change_status/{{ todo.id }}" method="post">
+                    <input class="completed-btn {% if todo.completed %}completed{% endif %}" type="submit"
+                           name="completed" value="Выполнить">
                 </form>
                 <small>
                     <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
-                        <input type="submit" onclick="delete" value="Редактировать">
+                        <input class="edit-btn" type="submit" value="Редактировать">
                     </form>
-                    <input type="button" value="Удалить" onclick="ask_and_submit(this, {{ todo.id  }})">
+                    <input class="delete-btn" type="button" value="Удалить"
+                           onclick="ask_and_submit(this, {{ todo.id }})">
                 </small>
-                <br>
-                <span>Источник: {{ todo.source }}</span>
-                <br>
-                <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
-                <br>
-                {% if todo.completed == True %}
-                    <span style="color:green;">Дата выполнения :{{todo.date_completion}} </span>
-                    <br>
-                    <span style="color:green;">Выполнил: {{todo.fullname}} </span>
-                {% endif %}
             </div>
-        <br>
+            <br>
         {% endfor %}
     </div>
     <div>
         {% if count_pages != 0 %}
             {% for i in range(count_pages) %}
                 <a rel={{ i }} {% if i == skip %}style="color:green;"{% endif %}
-                    href="/list?limit={{ limit }}&skip={{ i }}">{{ i }}</a>
+                   href="/list?limit={{ limit }}&skip={{ i }}">{{ i }}</a>
             {% endfor %}
         {% endif %}
     </div>

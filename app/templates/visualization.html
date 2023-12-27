@@ -3,7 +3,7 @@
 {% block content %}
 
  <br>
-    <h2>Задачи</h2>
+    <h2 style="margin-left: 40px">Задачи</h2>
     <div>
         {% for todo in todos %}
             <div class="title">
@@ -14,7 +14,7 @@
                 {% endif %}
                 <small>
                     <form style="display:inline;" class="form_inline" action="visualize/{{ todo.id }}" method="get">
-                        <input type="submit" onclick="delete" value="Visualize">
+                        <button type="submit">Visualize</button>
                     </form>
                 </small>
                 <br>
