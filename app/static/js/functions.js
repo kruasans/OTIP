@@ -17,12 +17,6 @@ function ask_and_submit(button, id){
     }
 }
 
-function isNumber(str){
-    if (typeof str != "string") return false // we only process strings!
-    return !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
-    !isNaN(parseFloat(str))
-}
-
 function generation(count){
     var path;
     console.log("here1");
@@ -37,14 +31,4 @@ function generation(count){
     path = "/generate?count=" + count;
     fetch(path, {method : "POST"});
     location.reload();
-}
-
-function upload(fileName){
-    if(fileName == ""){
-        return;
-    }
-    console.log(fileName)
-    var path = "/upload/" + fileName;
-    console.log(fileName);
-    fetch(path  , {method : "POST"});
 }
