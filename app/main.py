@@ -232,7 +232,7 @@ async def export(request: Request, database: Session = Depends(get_db)):
     buffer.seek(0)
     return Response(content=buffer.getvalue(),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": f"attachment; filename={}.xlsx"})
+                    headers={"Content-Disposition": f"attachment; filename=Export.xlsx"})
 
 
 @app.post("/upload/{filename}")
