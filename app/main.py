@@ -1,9 +1,13 @@
 """Main of todo app
 """
+import io
 import random
 
 import numpy
 from loguru import logger
+from matplotlib import pyplot as plt
+from wordcloud import WordCloud
+
 from support import visualize
 from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
 from fastapi.templating import Jinja2Templates
@@ -222,8 +226,13 @@ async def export(request: Request, database: Session = Depends(get_db)):
             "fullname": todo.fullname
         })
     df = pd.DataFrame(data=lst)
-    df.to_excel("Data.xlsx")
-    return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
+
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)
+    return Response(content=buffer.getvalue(),
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename=Export.xlsx"})
 
 
 @app.post("/upload/{filename}")
@@ -261,11 +270,7 @@ async def visualization(request: Request,
                         database: Session = Depends(get_db),
                         limit: int = 5,
                         skip: int = 1):
-    logger.info("Visualizating")
-    if path.exists("Visualization.png"):
-        os.remove("Visualization.png")
-    if path.exists("Data.xlsx"):
-        os.remove("Data.xlsx")
+    logger.info("Visualization page")
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
     if count_todos < 10:
@@ -288,10 +293,19 @@ async def visualization(request: Request,
 
 @app.get("/visualize/{todo_id}")
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
-    todo_title = database.query(models.Todo.title).filter(models.Todo.id == todo_id).first()
-    title = str(todo_title).split("\'")[1]
-    visualize(title, "Visualization.png")
-    return FileResponse(path='Visualization.png', filename='Visualization.png', media_type='image/png')
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+
+    wc = WordCloud(width=300, height=300, background_color="white").generate(todo.details)
+    plt.axis("off")
+    plt.imshow(wc, interpolation="bilinear")
+
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    return Response(content=buffer.getvalue(),
+                    media_type="image/png",
+                    headers={"Content-Disposition": f"attachment; filename={todo.title}.png"})
 
 
 @app.get("/pageFile")
