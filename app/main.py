@@ -226,8 +226,13 @@ async def export(request: Request, database: Session = Depends(get_db)):
             "fullname": todo.fullname
         })
     df = pd.DataFrame(data=lst)
-    df.to_excel("Data.xlsx")
-    return FileResponse(path='Data.xlsx', filename='Export.xlsx', media_type='application/octet-stream')
+
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)
+    return Response(content=buffer.getvalue(),
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename={}.xlsx"})
 
 
 @app.post("/upload/{filename}")
