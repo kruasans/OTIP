@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from wordcloud import WordCloud
 
 from support import visualize
-from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
+from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException, UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
@@ -230,20 +230,19 @@ async def export(request: Request, database: Session = Depends(get_db)):
     buffer = io.BytesIO()
     df.to_excel(buffer, index=False)
     buffer.seek(0)
+
     return Response(content=buffer.getvalue(),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f"attachment; filename=Export.xlsx"})
 
 
-@app.post("/upload/{filename}")
+@app.post("/upload/")
 async def upload(request: Request,
-                 filename: str,
+                 fileInput: UploadFile = Form(...),
                  database: Session = Depends(get_db)):
-    if not path.exists(f"{filename}"):
-        logger.info(f"Error! Trying to import not existing file {filename}.")
-        return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
-
-    df = pd.read_excel(filename,
+    content = fileInput.file.read()
+    buffer = io.BytesIO(content)
+    df = pd.read_excel(buffer,
                        converters={'date_creation': pd.to_datetime,
                                    'date_completion': pd.to_datetime})
 
@@ -261,7 +260,7 @@ async def upload(request: Request,
                        completed=bool(df.completed[i]),
                        fullname=df.fullname[i],
                        database=database)
-    logger.info(f"File {filename} imported.")
+    logger.info(f"File {fileInput.filename} imported.")
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 

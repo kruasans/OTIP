@@ -7,9 +7,9 @@
     </form> <br>
     <hr>
     <br>
-    <label for="fileinput">Выберите файл для импорта:</label>
-    <input type="file" id="fileinput" name="file" accept=".xlsx, .xls, .csv">
-    <br><br>
-    <button type="submit" onclick="upload(document.getElementById('fileinput').files[0].name)">Импорт</button>
-
+    <label for="fileInput">Выберите файл для импорта:</label>
+    <form action="/upload" method="post"  enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="fileInput" accept=".xlsx">
+        <button type="submit">Импорт</button>
+    </form>
 {% endblock content %}
