@@ -1,32 +1,23 @@
 """Main of todo app
 """
-import io
-import random
-
-import numpy
 from loguru import logger
 from matplotlib import pyplot as plt
 from wordcloud import WordCloud
-
-from support import visualize
-from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException, UploadFile
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-import uvicorn
-from typing import Annotated
 from database import init_db, get_db, Session
+from datetime import date
+import io
+import random
 import models
 import pandas as pd
-# import openpyxl
-# import xlrd
-from datetime import date, datetime
-import os
-from os import path
-from tags import TodoTags, Users, Source
 
-from sqlalchemy import Date
+from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from typing import Annotated
+import uvicorn
+
+from tags import TodoTags, Users, Source
 
 init_db()
 

@@ -12,21 +12,21 @@
     <link rel="stylesheet" href="{{ url_for('static', path='css/pageFile.css') }}">
 </head>
 <body>
-    <main>
-        <h1>ToDo App</h1>
-        <br>
-        {% block content %}
+<main>
+    <h1>ToDo App</h1>
+    <br>
+    {% block content %}
 
-        {% endblock content %}
-    </main>
-    <footer class="footer">
-        <ul class="hrefs_to_other_pages">
-            <li><a href="/">Домой</a></li>
-            <li><a href="/list">Список</a></li>
-            <li><a href="/pageFile">Работа с файлами</a></li>
-            <li><a href="/visualization">Визуализация</a></li>
-        </ul>
-    </footer>
+    {% endblock content %}
+</main>
+<footer class="footer">
+    <ul class="hrefs_to_other_pages">
+        <li><a href="/">Домой</a></li>
+        <li><a href="/list">Список</a></li>
+        <li><a href="/pageFile">Работа с файлами</a></li>
+        <li><a href="/visualization">Визуализация</a></li>
+    </ul>
+</footer>
 </body>
 <script src="static/js/functions.js"></script>
 </html>
