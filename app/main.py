@@ -265,11 +265,7 @@ async def visualization(request: Request,
                         database: Session = Depends(get_db),
                         limit: int = 5,
                         skip: int = 1):
-    logger.info("Visualizating")
-    if path.exists("Visualization.png"):
-        os.remove("Visualization.png")
-    if path.exists("Data.xlsx"):
-        os.remove("Data.xlsx")
+    logger.info("Visualization page")
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
     if count_todos < 10:
