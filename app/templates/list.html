@@ -13,7 +13,13 @@
                     {{ todo.title }}
                 {% endif %}
                 <span style="color:green;">{{todo.type}}</span>
-                <input type="checkbox" name="completed" onchange="change_status({{todo.id}})" {% if todo.completed %}checked{% endif %}>
+                <form action="change_status/{{ todo.id }}" method="post">
+                    {% if todo.completed %}
+                        <input style="background-color: red" type="submit" name="completed" value="Выполнить">
+                    {% else %}
+                        <input style="background-color: chartreuse" type="submit" name="completed" value="Выполнить">
+                    {% endif %}
+                </form>
                 <small>
                     <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
                         <input type="submit" onclick="delete" value="Редактировать">

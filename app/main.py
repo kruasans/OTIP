@@ -117,7 +117,8 @@ async def todo_add(request: Request,
 
 @app.get("/edit/{todo_id}")
 async def todo_get(request: Request,
-                   todo_id: int, database: Session = Depends(get_db)):
+                   todo_id: int,
+                   database: Session = Depends(get_db)):
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -184,7 +185,7 @@ async def todo_change_status(request: Request,
             logger.info(f"Editting status: {todo} to Done")
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/generate")
