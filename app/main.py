@@ -98,12 +98,6 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
-    # details = str(details)
-    # print(details)
-    # if details == "nan":
-    #     print("true")
-    # else:
-    #     print("false")
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
@@ -156,7 +150,7 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.delete("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -244,9 +238,11 @@ async def export(request: Request, database: Session = Depends(get_db)):
 
 @app.post("/upload/")
 async def upload(request: Request,
-                 fileInput: UploadFile = Form(...),
+                 file_input: UploadFile = Form(),
                  database: Session = Depends(get_db)):
-    content = fileInput.file.read()
+    if file_input.filename.split(".")[-1] != 'xlsx':
+        return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,
                        converters={'date_creation': pd.to_datetime,
@@ -264,8 +260,8 @@ async def upload(request: Request,
                        completed=bool(df.completed[i]),
                        fullname=df.fullname[i],
                        database=database)
-    logger.info(f"File {fileInput.filename} imported.")
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    logger.info(f"File {file_input.filename} imported.")
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/visualization")
