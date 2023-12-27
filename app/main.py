@@ -1,9 +1,13 @@
 """Main of todo app
 """
+import io
 import random
 
 import numpy
 from loguru import logger
+from matplotlib import pyplot as plt
+from wordcloud import WordCloud
+
 from support import visualize
 from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException
 from fastapi.templating import Jinja2Templates
@@ -288,10 +292,19 @@ async def visualization(request: Request,
 
 @app.get("/visualize/{todo_id}")
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
-    todo_title = database.query(models.Todo.title).filter(models.Todo.id == todo_id).first()
-    title = str(todo_title).split("\'")[1]
-    visualize(title, "Visualization.png")
-    return FileResponse(path='Visualization.png', filename='Visualization.png', media_type='image/png')
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+
+    wc = WordCloud(width=300, height=300, background_color="white").generate(todo.details)
+    plt.axis("off")
+    plt.imshow(wc, interpolation="bilinear")
+
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+
+    return Response(content=buffer.getvalue(),
+                    media_type="image/png",
+                    headers={"Content-Disposition": f"attachment; filename={todo.title}.png"})
 
 
 @app.get("/pageFile")
