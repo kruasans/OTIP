@@ -1,5 +1,7 @@
 """Main of todo app
 """
+import math
+
 from loguru import logger
 from matplotlib import pyplot as plt
 from wordcloud import WordCloud
@@ -52,21 +54,21 @@ async def home(request: Request,
 @app.get("/list")
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
-                    type: Annotated[str, Form()] = "Education",
+                    type: Annotated[str, Form()] = None,
                     limit: int = 5,
-                    skip: int = 1):
+                    skip: int = 0):
     logger.info("Todo list")
-    count_todos = database.query(models.Todo).count()
-    count_pages = int(count_todos / limit)
+    count_todos = database.query(models.Todo).count() if type is None else database.query(models.Todo).filter(models.Todo.type == type).count()
+    count_pages = math.ceil(count_todos / limit)
 
-    if count_pages * limit != count_todos:
-        count_pages += 1
+    # if count_pages * limit != count_todos:
+    #     count_pages += 1
+    skip_todos = limit * skip
     if skip > count_pages:
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(0).limit(limit)
-        return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
-                                                        "limit": limit, "skip": skip,
-                                                        "count_pages": count_pages, "types": TodoTags})
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(limit * skip).limit(limit)
+        skip_todos = 0
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(skip_todos).limit(limit)
+    if type is None:
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
                                                     "limit": limit, "skip": skip,
                                                     "count_pages": count_pages, "types": TodoTags})
