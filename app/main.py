@@ -52,24 +52,21 @@ async def home(request: Request,
 @app.get("/list")
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
+                    type: Annotated[str, Form()] = "Education",
                     limit: int = 5,
                     skip: int = 1):
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
-    if count_todos < 10:
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc())
-        return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
-                                                        "limit": limit, "skip": skip,
-                                                        "count_pages": 0, "types": TodoTags})
+
     if count_pages * limit != count_todos:
         count_pages += 1
     if skip > count_pages:
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(0).limit(limit)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(0).limit(limit)
         return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
                                                         "limit": limit, "skip": skip,
                                                         "count_pages": count_pages, "types": TodoTags})
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(limit * skip).limit(limit)
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(limit * skip).limit(limit)
     return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
                                                     "limit": limit, "skip": skip,
                                                     "count_pages": count_pages, "types": TodoTags})
