@@ -51,4 +51,21 @@
     color: #fff;
 }
 
+.submit_filter_todo{
+    background-color: #3498db;
+    color: #fff;
+    padding: 12px 10px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 18px;
+}
+
+.filter_todo {
+    width: 19%;
+    margin-left: 20px;
+    white-space: nowrap;
+    padding: 12px;
+}
+
 
