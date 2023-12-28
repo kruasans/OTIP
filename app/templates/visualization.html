@@ -2,8 +2,8 @@
 
 {% block content %}
 
- <br>
-    <h2>Задачи</h2>
+    <br>
+    <h2 style="margin-left: 40px">Задачи</h2>
     <div>
         {% for todo in todos %}
             <div class="title">
@@ -14,21 +14,21 @@
                 {% endif %}
                 <small>
                     <form style="display:inline;" class="form_inline" action="visualize/{{ todo.id }}" method="get">
-                        <input type="submit" onclick="delete" value="Visualize">
+                        <button type="submit">Visualize</button>
                     </form>
                 </small>
                 <br>
-                <span style="color:green;">Дата создания :{{todo.date_creation}}</span>
+                <span style="color:green;">Дата создания :{{ todo.date_creation }}</span>
                 <br>
             </div>
-        <br>
+            <br>
         {% endfor %}
     </div>
     <div>
         {% if count_pages != 0 %}
             {% for i in range(count_pages) %}
                 <a rel={{ i }} {% if i == skip %}style="color:green;"{% endif %}
-                    href="/visualization?limit={{ limit }}&skip={{ i }}">{{ i }}</a>
+                   href="/visualization?limit={{ limit }}&skip={{ i }}">{{ i }}</a>
             {% endfor %}
         {% endif %}
     </div>

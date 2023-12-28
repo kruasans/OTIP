@@ -15,7 +15,7 @@ class Todo(Base):
     __tablename__ = 'todos'
     id = Column(Integer, primary_key=True)
     title = Column(Text)
-    details = Column(Text)
+    details = Column(Text, default="")
     completed = Column(Boolean, default=False)
     type = Column(Text)
     source = Column(Text)

@@ -1,32 +1,23 @@
 """Main of todo app
 """
-import io
-import random
-
-import numpy
 from loguru import logger
 from matplotlib import pyplot as plt
 from wordcloud import WordCloud
-
-from support import visualize
-from fastapi import FastAPI, Request, Depends, Form, status, Response, Query, HTTPException, UploadFile
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-import uvicorn
-from typing import Annotated
 from database import init_db, get_db, Session
+from datetime import date
+import io
+import random
 import models
 import pandas as pd
-# import openpyxl
-# import xlrd
-from datetime import date, datetime
-import os
-from os import path
-from tags import TodoTags, Users, Source
 
-from sqlalchemy import Date
+from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from typing import Annotated
+import uvicorn
+
+from tags import TodoTags, Users, Source
 
 init_db()
 
@@ -99,7 +90,6 @@ async def todo_add(request: Request,
     """Add new todo
     """
     if title is not None and title.replace(" ", "") != "" or title == "":
-        print(source)
         todo = models.Todo(title=title,
                            details=details,
                            type=type,
@@ -117,7 +107,8 @@ async def todo_add(request: Request,
 
 @app.get("/edit/{todo_id}")
 async def todo_get(request: Request,
-                   todo_id: int, database: Session = Depends(get_db)):
+                   todo_id: int,
+                   database: Session = Depends(get_db)):
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -150,7 +141,7 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.delete("/delete/{todo_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -184,7 +175,7 @@ async def todo_change_status(request: Request,
             logger.info(f"Editting status: {todo} to Done")
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.post("/generate")
@@ -202,7 +193,7 @@ async def generate_todo(request: Request,
         type = types[random.randint(0, 2)]
         await todo_add(request=request,
                        title=title,
-                       type=title,
+                       type=type,
                        source=Source.source_generated.value,
                        details=None,
                        database=database)
@@ -238,9 +229,11 @@ async def export(request: Request, database: Session = Depends(get_db)):
 
 @app.post("/upload/")
 async def upload(request: Request,
-                 fileInput: UploadFile = Form(...),
+                 file_input: UploadFile = Form(),
                  database: Session = Depends(get_db)):
-    content = fileInput.file.read()
+    if file_input.filename.split(".")[-1] != 'xlsx':
+        return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,
                        converters={'date_creation': pd.to_datetime,
@@ -248,20 +241,18 @@ async def upload(request: Request,
 
     count_str = len(df.title)
     for i in range(0, count_str):
-        print(type(df.date_creation[i]))
-        print(df.date_creation[i])
         await todo_add(request=request,
                        title=df.title[i],
                        type=df.type[i],
                        source=Source.source_exported.value,
-                       details=df.details[i],
+                       details=df.details[i] if str(df.details[i]) != "nan" else "",
                        date_creation=df.date_creation[i],
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
                        completed=bool(df.completed[i]),
                        fullname=df.fullname[i],
                        database=database)
-    logger.info(f"File {fileInput.filename} imported.")
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    logger.info(f"File {file_input.filename} imported.")
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/visualization")
