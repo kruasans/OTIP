@@ -1,0 +1,30 @@
+.export-form, .import-form {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.button {
+    background-color: #3498db;
+    color: #fff;
+    padding: 12px 20px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 18px;
+    margin: 0 auto;
+    display: block;
+}
+
+.button:hover {
+    background-color: #2980b9;
+}
+
+.hr-divider {
+    border: 1px solid #ccc;
+    margin: 20px 0;
+}

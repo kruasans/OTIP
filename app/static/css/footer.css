@@ -1,0 +1,36 @@
+.footer {
+   background-color: #545559;
+   position: fixed;
+   right: 0;
+   bottom: 0;
+   text-align: center;
+   width: 100%;
+   font-size: 19px;
+   font-weight: bold;
+ }
+
+.hrefs_to_other_pages{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+.hrefs_to_other_pages li{
+    list-style: none;
+}
+
+.hrefs_to_other_pages li a {
+    font-size: 1.2em;/*размер ссылок меню*/
+    color: #fff;/*цвет ссылок меню*/
+    opacity: 0.75;/*значение прозрачности*/
+    margin: 0 15px;
+    text-decoration: none;/*ссылка без подчеркивания*/
+    display: inline-block;
+}
+
+.hrefs_to_other_pages li a:hover {
+    opacity: 1;
+}
