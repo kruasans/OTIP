@@ -6,6 +6,10 @@ class TodoTags(Enum):
     personal = "Personal"
     plan = "Plan"
 
+    @classmethod
+    def contains(cls, value):
+        return any(value == item.value for item in cls)
+
 
 class Users(Enum):
     user1 = "2021-3-26-cha"

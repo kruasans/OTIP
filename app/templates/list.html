@@ -5,6 +5,18 @@
     <br>
     <h2 style="margin-left: 40px">Задачи</h2>
     <div>
+        <form action="/list" method="get" id="list">
+            <select name="type" id="type" form="list">
+                <option hidden="hidden">Фильтр</option>
+                {% for type in types %}
+                    <option value="{{ type.value }}">{{ type.value }}</option>
+                {% endfor %}
+                <option value="None">Показать все</option>
+            </select>
+            <input type="submit" form="list" value="Применить">
+        </form>
+    </div>
+    <div>
         {% for todo in todos %}
             <div class="title">
                 <div class="text-container">
