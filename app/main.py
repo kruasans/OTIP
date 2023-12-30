@@ -54,24 +54,24 @@ async def home(request: Request,
 @app.get("/list")
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
-                    type: Annotated[str, Form()] = None,
+                    type: str = None,
                     limit: int = 5,
                     skip: int = 0):
     logger.info("Todo list")
-    count_todos = database.query(models.Todo).count() if type is None else database.query(models.Todo).filter(models.Todo.type == type).count()
+    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(type) else database.query(models.Todo).filter(
+        models.Todo.type == type).count()
     count_pages = math.ceil(count_todos / limit)
 
-    # if count_pages * limit != count_todos:
-    #     count_pages += 1
     skip_todos = limit * skip
     if skip > count_pages:
         skip_todos = 0
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(skip_todos).limit(limit)
-    if type is None:
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+        skip_todos).limit(limit)
+    if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
                                                     "limit": limit, "skip": skip,
-                                                    "count_pages": count_pages, "types": TodoTags})
+                                                    "count_pages": count_pages, "types": TodoTags, "type": type})
 
 
 @app.post("/add")
