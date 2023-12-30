@@ -288,7 +288,9 @@ async def visualization(request: Request,
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
-    wc = WordCloud(width=300, height=300, background_color="white").generate(todo.details)
+    wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
+                                                                             if todo.details is not None and todo.details.replace(" ", "")!=""
+                                                                             else todo.title)
     plt.axis("off")
     plt.imshow(wc, interpolation="bilinear")
 
@@ -298,7 +300,7 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
 
     return Response(content=buffer.getvalue(),
                     media_type="image/png",
-                    headers={"Content-Disposition": f"attachment; filename={todo.title}.png"})
+                    headers={"Content-Disposition": f"attachment; filename=Visualization{todo.id}.png"})
 
 
 @app.get("/pageFile")
