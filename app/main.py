@@ -66,7 +66,8 @@ async def list_todo(request: Request,
             skip = request.cookies.get('skip')
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
-    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(type) else database.query(models.Todo).filter(
+    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
+        type) else database.query(models.Todo).filter(
         models.Todo.type == type).count()
     count_pages = math.ceil(count_todos / limit)
 
@@ -77,9 +78,11 @@ async def list_todo(request: Request,
         skip_todos).limit(limit)
     if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
-    template_response = templates.TemplateResponse("list.html", {"request": request, "todos": todos,
+    template_response = templates.TemplateResponse("list.html",
+                                                   {"request": request, "todos": todos,
                                                     "limit": limit, "skip": skip,
-                                                    "count_pages": count_pages, "types": TodoTags, "type": type})
+                                                    "count_pages": count_pages,
+                                                    "types": TodoTags, "type": type})
     template_response.set_cookie("limit", str(limit))
     template_response.set_cookie("skip", str(skip))
     return template_response
@@ -272,9 +275,36 @@ async def upload(request: Request,
 @app.get("/visualization")
 async def visualization(request: Request,
                         database: Session = Depends(get_db),
-                        limit: int = 5,
-                        skip: int = 1):
+                        limit: int = None,
+                        skip: int = None):
+    if limit is None:
+        if request.cookies.get('limit_visualization') is None:
+            limit = "5"
+            skip = "0"
+        else:
+            limit = request.cookies.get('limit_visualization')
+            skip = request.cookies.get('skip_visualization')
+    limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
+    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
+        type) else database.query(models.Todo).filter(
+        models.Todo.type == type).count()
+    count_pages = math.ceil(count_todos / limit)
+
+    skip_todos = limit * skip
+    if skip > count_pages:
+        skip_todos = 0
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+        skip_todos).limit(limit)
+    if type is None or not TodoTags.contains(type):
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
+    template_response = templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
+                                                             "limit": limit, "skip": skip,
+                                                             "count_pages": count_pages, "types": TodoTags})
+    template_response.set_cookie(key="limit_visualization", value=str(limit))
+    template_response.set_cookie(key="skip_visualization", value=str(skip))
+    return template_response
+
     count_todos = database.query(models.Todo).count()
     count_pages = int(count_todos / limit)
     if count_todos < 10:
@@ -295,13 +325,14 @@ async def visualization(request: Request,
                                                              "count_pages": count_pages, "types": TodoTags})
 
 
+
 @app.get("/visualize/{todo_id}")
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
-                                                                             if todo.details is not None and todo.details.replace(" ", "")!=""
-                                                                             else todo.title)
+    if todo.details is not None and todo.details.replace(" ", "") != ""
+    else todo.title)
     plt.axis("off")
     plt.imshow(wc, interpolation="bilinear")
 
