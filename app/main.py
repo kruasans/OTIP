@@ -54,7 +54,7 @@ async def home(request: Request,
 @app.get("/list")
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
-                    type: Annotated[str, Form()] = None,
+                    type: str = None,
                     limit: int = 5,
                     skip: int = 0):
     logger.info("Todo list")
