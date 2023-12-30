@@ -25,7 +25,7 @@
         {% endfor %}
     </div>
     <div>
-        {% if count_pages != 0 %}
+        {% if count_pages != 1 %}
             {% for i in range(count_pages) %}
                 <a rel={{ i }} {% if i == skip %}style="color:green;"{% endif %}
                    href="/visualization?limit={{ limit }}&skip={{ i }}">{{ i }}</a>
