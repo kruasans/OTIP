@@ -161,6 +161,20 @@ async def todo_delete(request: Request,
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
+@app.delete("/delete_all")
+async def todo_delete_all(request: Request, database: Session = Depends(get_db)):
+    """Delete all todos"""
+    # Получаем все записи из базы данных
+    all_todos = database.query(models.Todo).all()
+
+    # Удаляем каждую запись
+    for todo in all_todos:
+        await todo_delete(request=request,
+                          todo_id=todo.id,
+                          database=database)
+
+    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+
 @app.post("/change_status/{todo_id}")
 async def todo_change_status(request: Request,
                              todo_id: int,
