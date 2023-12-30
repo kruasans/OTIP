@@ -12,7 +12,7 @@ import random
 import models
 import pandas as pd
 
-from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile
+from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -55,8 +55,16 @@ async def home(request: Request,
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
                     type: str = None,
-                    limit: int = 5,
-                    skip: int = 0):
+                    limit: str = None,
+                    skip: str = None):
+    if limit is None:
+        if request.cookies.get('limit') is None:
+            limit = "5"
+            skip = "0"
+        else:
+            limit = request.cookies.get('limit')
+            skip = request.cookies.get('skip')
+    limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(type) else database.query(models.Todo).filter(
         models.Todo.type == type).count()
@@ -69,9 +77,12 @@ async def list_todo(request: Request,
         skip_todos).limit(limit)
     if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
-    return templates.TemplateResponse("list.html", {"request": request, "todos": todos,
+    template_response = templates.TemplateResponse("list.html", {"request": request, "todos": todos,
                                                     "limit": limit, "skip": skip,
                                                     "count_pages": count_pages, "types": TodoTags, "type": type})
+    template_response.set_cookie("limit", str(limit))
+    template_response.set_cookie("skip", str(skip))
+    return template_response
 
 
 @app.post("/add")
