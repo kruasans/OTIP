@@ -32,3 +32,10 @@ function generation(count) {
     fetch(path, {method: "POST"});
     location.reload();
 }
+
+function ask_and_submit_2() {
+    var answer = confirm("Вы действительно хотите удалить все записи?");
+    if (answer) {
+        delete_every_todo()
+    }
+}
