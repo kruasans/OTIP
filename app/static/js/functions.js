@@ -38,4 +38,10 @@ function ask_and_submit_2() {
     if (answer) {
         delete_every_todo()
     }
-}
+    }
+
+function limit(lim) {
+    var path = "/?limit="+lim;
+    fetch(path, {method: "GET"});
+    location.reload();
+    }
