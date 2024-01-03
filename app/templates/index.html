@@ -19,13 +19,6 @@
     </form>
 
     <div class="index_form">
-        <h3>Генерация задач</h3>
-        <input type="text" id="todo_count">
-        <input type="button" value="Сгенерировать" onclick="generation(document.getElementById('todo_count').value)"
-               class="generate">
-    </div>
-
-    <div class="index_form">
         <span>Количество выполненных задач:</span>
         <br>
         <span>2021-3-26-cha: {{ cha }}</span>
@@ -37,8 +30,6 @@
     <div class="index_form">
         <span>Настройка количества выводимых задач</span>
         <input type="number" size="5" min="1" max="10" id="lim">
-        <br>
-        <br>
         <input type="button" value="Применить" onclick="limit(document.getElementById('lim').value)" class="generate">
     </div>
 

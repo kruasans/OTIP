@@ -234,7 +234,8 @@ async def generate_todo(request: Request,
                        source=Source.source_generated.value,
                        details=None,
                        database=database)
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer", "something"}
 
 
 @app.get("/export")
@@ -298,7 +299,7 @@ async def visualization(request: Request,
                         limit: int = None,
                         skip: int = None):
     if limit is None:
-        if request.cookies.get('limit') is None:
+        if request.cookies.get('limit') is None or request.cookies.get('skip_visualization') is None:
             limit = "5"
             skip = "0"
         else:
@@ -368,6 +369,11 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
 @app.get("/pageFile")
 async def page_file(request: Request):
     return templates.TemplateResponse("pageFile.html", {"request": request})
+
+
+@app.get("/generator")
+async def generator(request: Request):
+    return templates.TemplateResponse("generator.html", {"request": request})
 
 
 if __name__ == "__main__":
