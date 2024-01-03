@@ -37,16 +37,13 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/", status_code=status.HTTP_200_OK)
 async def home(request: Request,
                database: Session = Depends(get_db),
-               limit: str = None,
-               skip: int = None):
+               limit: str = None):
     """Main page with todo list"""
     if limit is None:
         if request.cookies.get('limit') is None:
             limit = "5"
-            skip = "0"
         else:
             limit = request.cookies.get('limit')
-            skip = request.cookies.get('skip')
     count_cha = database.query(models.Todo).filter(models.Todo.fullname == "2021-3-26-cha").filter(
         models.Todo.completed == True).count()
     count_zva = database.query(models.Todo).filter(models.Todo.fullname == "2021-3-04-zva").filter(
@@ -57,7 +54,6 @@ async def home(request: Request,
                                       {"request": request, "types": TodoTags, "fullnames": Users, "cha": count_cha,
                                        "zva": count_zva, "pro": count_pro})
     template.set_cookie("limit", str(limit))
-    template.set_cookie("skip", str(skip))
     return template
 
 
