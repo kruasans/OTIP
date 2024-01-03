@@ -38,4 +38,9 @@ function ask_and_submit_2() {
     if (answer) {
         delete_every_todo()
     }
-}
+    }
+
+function limit(lim) {
+    var path = "/?limit="+lim+"&skip=0";
+    fetch(path, {method: "GET"});
+    }

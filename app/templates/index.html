@@ -34,5 +34,12 @@
         <br>
         <span>2021-3-12-pro: {{ pro }}</span>
     </div>
+    <div class="index_form">
+        <span>Настройка количества выводимых задач</span>
+        <input type="number" size="5" min="1" max="10" id="lim">
+        <br>
+        <br>
+        <input type="button" value="Применить" onclick="limit(document.getElementById('lim').value)" class="generate">
+    </div>
 
 {% endblock content %}
