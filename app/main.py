@@ -307,7 +307,7 @@ async def visualization(request: Request,
             skip = "0"
         else:
             limit = request.cookies.get('limit')
-            skip = request.cookies.get('skip')
+            skip = request.cookies.get('skip_visualization')
     limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -326,7 +326,7 @@ async def visualization(request: Request,
                                                              "limit": limit, "skip": skip,
                                                              "count_pages": count_pages, "types": TodoTags})
     template_response.set_cookie("limit", value=str(limit))
-    template_response.set_cookie("skip", value=str(skip))
+    template_response.set_cookie("skip_visualization", value=str(skip))
     return template_response
 
     count_todos = database.query(models.Todo).count()
