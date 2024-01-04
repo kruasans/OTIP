@@ -25,3 +25,9 @@ class Todo(Base):
 
     def __repr__(self):
         return f'<Todo {self.id}>'
+
+
+class ImportedFiles(Base):
+    __tablename__ = 'imported'
+    id = Column(Integer, primary_key=True)
+    file_name = Column(Text, default="")
