@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Импортированные фалы</h1>
+{% for filename in filenames %}
+    <div class="title">{{ filename.file_name }}</div>
+{% endfor %}
+
+{% endblock content %}
