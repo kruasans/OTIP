@@ -55,8 +55,8 @@ async def home(request: Request,
     count_pro = database.query(models.Todo).filter(models.Todo.fullname == "2021-3-12-pro").filter(
         models.Todo.completed == True).count()
     template = templates.TemplateResponse("index.html",
-                                      {"request": request, "types": TodoTags, "fullnames": Users, "cha": count_cha,
-                                       "zva": count_zva, "pro": count_pro})
+                                          {"request": request, "types": TodoTags, "fullnames": Users, "cha": count_cha,
+                                           "zva": count_zva, "pro": count_pro})
     template.set_cookie("limit", str(limit))
     return template
 
@@ -199,6 +199,7 @@ async def todo_delete_all(request: Request, database: Session = Depends(get_db))
 
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
+
 @app.post("/change_status/{todo_id}")
 async def todo_change_status(request: Request,
                              todo_id: int,
@@ -326,8 +327,9 @@ async def visualization(request: Request,
     if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
-                                                             "limit": limit, "skip": skip,
-                                                             "count_pages": count_pages, "types": TodoTags})
+                                                                          "limit": limit, "skip": skip,
+                                                                          "count_pages": count_pages,
+                                                                          "types": TodoTags})
     template_response.set_cookie("limit", value=str(limit))
     template_response.set_cookie("skip_visualization", value=str(skip))
     return template_response
@@ -350,7 +352,6 @@ async def visualization(request: Request,
     return templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
                                                              "limit": limit, "skip": skip,
                                                              "count_pages": count_pages, "types": TodoTags})
-
 
 
 @app.get("/visualize/{todo_id}")
@@ -388,37 +389,40 @@ async def issue_page(request: Request):
 
 
 @app.post("/import_issues/")
-async def import_issues(request: Request, url : Annotated[str,Form()], token:Annotated[str,Form()], database: Session = Depends(get_db)):
+async def import_issues(request: Request, url: Annotated[str, Form()], token: Annotated[str, Form()],
+                        database: Session = Depends(get_db)):
     try:
         if "http" not in url:
             raise Exception
-        proj=url.split("/")[-1]
-        index = url.find("/",9)
-        plat=url[0:index]
-        gl= gitlab.Gitlab(plat,token)
+        proj = url.split("/")[-1]
+        index = url.find("/", 9)
+        plat = url[0:index]
+        gl = gitlab.Gitlab(plat, token)
         gl.auth()
-    except (GitlabAuthenticationError,Exception):
+    except (GitlabAuthenticationError, Exception):
         return RedirectResponse(url=app.url_path_for("issue_page"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     project = gl.projects.list(search=proj)
-    issues=project[0].issues.list(get_all=True)
+    issues = project[0].issues.list(get_all=True)
     issues.reverse()
     print("find issues")
     for issue in issues:
-        title=str(issue).split("title")[1].split("\'")[2]
-        details=str(issue).split("description")[1].split("\'")[2]
-        completed=str(issue).split("state")[1].split(",")[0].split("\'")[2]
-        date_creation=datetime.datetime.strptime(str(issue).split("created_at")[1].split("\'")[2].split("T")[0], "%Y-%m-%d").date()
-        if completed=="closed":
-            date_completion = datetime.datetime.strptime((str(issue).split("closed_at")[1].split("\'")[2].split("T")[0]), "%Y-%m-%d").date()
+        title = str(issue).split("title")[1].split("\'")[2]
+        details = str(issue).split("description")[1].split("\'")[2]
+        completed = str(issue).split("state")[1].split(",")[0].split("\'")[2]
+        date_creation = datetime.datetime.strptime(str(issue).split("created_at")[1].split("\'")[2].split("T")[0],
+                                                   "%Y-%m-%d").date()
+        if completed == "closed":
+            date_completion = datetime.datetime.strptime(
+                (str(issue).split("closed_at")[1].split("\'")[2].split("T")[0]), "%Y-%m-%d").date()
         else:
             date_completion = None
-        name=str(issue).split("username")[1].split("\'")[2]
-        if name=="KLINTez":
-            fullname=Users.user1.value
-        elif name=="dedvkedahnike":
-            fullname=Users.user2.value
-        elif name=="kruasan":
-            fullname=Users.user3.value
+        name = str(issue).split("username")[1].split("\'")[2]
+        if name == "KLINTez":
+            fullname = Users.user1.value
+        elif name == "dedvkedahnike":
+            fullname = Users.user2.value
+        elif name == "kruasan":
+            fullname = Users.user3.value
         else:
             fullname = Users.user1.value
         await todo_add(request=request,
@@ -427,12 +431,18 @@ async def import_issues(request: Request, url : Annotated[str,Form()], token:Ann
                        source=Source.source_exported.value,
                        details=details,
                        date_creation=date_creation,
-                       date_completion=date_completion ,
-                       completed=True if completed=="closed" else False,
+                       date_completion=date_completion,
+                       completed=True if completed == "closed" else False,
                        fullname=fullname,
                        database=database)
 
     return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.get("/import_log/")
+def import_log(request: Request, database: Session = Depends(get_db)):
+    filenames = database.query(models.ImportedFiles).all()
+    return templates.TemplateResponse("import_log.html", {"request": request, "filenames": filenames})
 
 
 if __name__ == "__main__":
