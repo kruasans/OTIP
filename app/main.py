@@ -294,6 +294,8 @@ async def upload(request: Request,
                        fullname=df.fullname[i],
                        database=database)
     logger.info(f"File {file_input.filename} imported.")
+    database.add(models.ImportedFiles(file_name=file_input.filename))
+    database.commit()
     return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
