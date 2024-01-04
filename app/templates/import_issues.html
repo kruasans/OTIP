@@ -2,13 +2,13 @@
 
 {% block content %}
 
-    <div class="index_form">
+    <form action="/import_issues/" method="post" class="index_form">
     <h2>Импорт задач</h2>
         <h3>URL:</h3>
-        <input type="text" id="url">
+        <input type="text" name="url" placeholder="https://gitlab.com/project">
         <h3>Token:</h3>
-        <input type="text" id="token">
-         <input type="button" value="Импортировать" onclick="issues()" class="generate">
-    </div>
+        <input type="text" name="token" placeholder="some symbols">
+        <button class="generate" type="submit">Импортировать</button>
+    </form>
 
 {% endblock content %}

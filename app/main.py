@@ -12,6 +12,7 @@ import random
 import models
 import pandas as pd
 import gitlab
+from gitlab import GitlabAuthenticationError
 import datetime
 
 from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie
@@ -384,11 +385,21 @@ async def issue_page(request: Request):
 
 
 @app.post("/import_issues/")
-async def import_issues(request: Request, database: Session = Depends(get_db)):
-    gl= gitlab.Gitlab("https://gitlab.com","glpat-p38EQkHybvWKjzEbCUwV")
-    gl.auth()
-    project = gl.projects.list(search="FastapiLR")
+async def import_issues(request: Request, url : Annotated[str,Form()], token:Annotated[str,Form()], database: Session = Depends(get_db)):
+    try:
+        if "http" not in url:
+            raise Exception
+        proj=url.split("/")[-1]
+        index = url.find("/",9)
+        plat=url[0:index]
+        gl= gitlab.Gitlab(plat,token)
+        gl.auth()
+    except (GitlabAuthenticationError,Exception):
+        return RedirectResponse(url=app.url_path_for("issue_page"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    project = gl.projects.list(search=proj)
     issues=project[0].issues.list(get_all=True)
+    issues.reverse()
+    print("find issues")
     for issue in issues:
         title=str(issue).split("title")[1].split("\'")[2]
         details=str(issue).split("description")[1].split("\'")[2]
@@ -405,6 +416,8 @@ async def import_issues(request: Request, database: Session = Depends(get_db)):
             fullname=Users.user2.value
         elif name=="kruasan":
             fullname=Users.user3.value
+        else:
+            fullname = Users.user1.value
         await todo_add(request=request,
                        title=title,
                        type=TodoTags.education.value,
