@@ -41,5 +41,4 @@ function ask_and_submit_2() {
 function limit(lim) {
     var path = "/?limit="+lim;
     fetch(path, {method: "GET"});
-    location.reload();
     }
