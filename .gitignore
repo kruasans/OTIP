@@ -2,3 +2,4 @@
 */db.sqlite
 .idea/
 app/*.png
+app/static/media/*.png

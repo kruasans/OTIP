@@ -23,6 +23,18 @@
         {% endif %}
         <button type="submit">Сохранить</button>
     </form>
+    {% if image == True %}
+    <br>
+    <img
+    style="width:100%;"
+    src="/static/media/{{picture_name}}"
+    alt="Picture" />
+    {% endif %}
+        <form action="/load_image" method="post" enctype="multipart/form-data" style="">
+            <input placeholder="picture.png" type="file" id="file_input" name="file_input" accept=".png"
+                   style="margin-bottom: 10px">
+            <button type="submit">Загрузить</button>
+        </form>
     <a href="/list?type={{ todo.type }}">{{ todo.type }}</a>
 
 {% endblock content %}

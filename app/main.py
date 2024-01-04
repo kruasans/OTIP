@@ -35,6 +35,7 @@ logger = logger.opt(colors=True)
 # pylint: enable=invalid-name
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/media", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/", status_code=status.HTTP_200_OK)
