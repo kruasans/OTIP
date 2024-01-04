@@ -23,6 +23,13 @@
         {% endif %}
         <button type="submit">Сохранить</button>
     </form>
+    {% if image == True %}
+    <br>
+    <img
+    style="width:100%;"
+    src="/static/media/{{picture_name}}"
+    alt="Picture" />
+    {% endif %}
     <a href="/list?type={{ todo.type }}">{{ todo.type }}</a>
 
 {% endblock content %}
