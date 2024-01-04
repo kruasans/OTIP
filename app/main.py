@@ -11,6 +11,8 @@ import io
 import random
 import models
 import pandas as pd
+import gitlab
+import datetime
 
 from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie
 from fastapi.templating import Jinja2Templates
@@ -379,6 +381,42 @@ async def generator(request: Request):
 @app.get("/import_issues")
 async def issue_page(request: Request):
     return templates.TemplateResponse("import_issues.html", {"request": request})
+
+
+@app.post("/import_issues/")
+async def import_issues(request: Request, database: Session = Depends(get_db)):
+    gl= gitlab.Gitlab("https://gitlab.com","glpat-p38EQkHybvWKjzEbCUwV")
+    gl.auth()
+    project = gl.projects.list(search="FastapiLR")
+    issues=project[0].issues.list(get_all=True)
+    for issue in issues:
+        title=str(issue).split("title")[1].split("\'")[2]
+        details=str(issue).split("description")[1].split("\'")[2]
+        completed=str(issue).split("state")[1].split(",")[0].split("\'")[2]
+        date_creation=datetime.datetime.strptime(str(issue).split("created_at")[1].split("\'")[2].split("T")[0], "%Y-%m-%d").date()
+        if completed=="closed":
+            date_completion = datetime.datetime.strptime((str(issue).split("closed_at")[1].split("\'")[2].split("T")[0]), "%Y-%m-%d").date()
+        else:
+            date_completion = None
+        name=str(issue).split("username")[1].split("\'")[2]
+        if name=="KLINTez":
+            fullname=Users.user1.value
+        elif name=="dedvkedahnike":
+            fullname=Users.user2.value
+        elif name=="kruasan":
+            fullname=Users.user3.value
+        await todo_add(request=request,
+                       title=title,
+                       type=TodoTags.education.value,
+                       source=Source.source_exported.value,
+                       details=details,
+                       date_creation=date_creation,
+                       date_completion=date_completion ,
+                       completed=True if completed=="closed" else False,
+                       fullname=fullname,
+                       database=database)
+
+    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 if __name__ == "__main__":

@@ -42,3 +42,9 @@ function limit(lim) {
     var path = "/?limit="+lim;
     fetch(path, {method: "GET"});
     }
+
+function issues(){
+    var path = "/import_issues/";
+    fetch(path, {method: "POST"});
+    window.location.href="/list";
+}
