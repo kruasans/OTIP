@@ -22,6 +22,7 @@ class Todo(Base):
     date_creation = Column(Date, default=date.today())
     date_completion = Column(Date, default=None)
     fullname = Column(Text, default="user")
+    image_path= Column(Text,default="Empty.png")
 
     def __repr__(self):
         return f'<Todo {self.id}>'

@@ -8,6 +8,7 @@ from wordcloud import WordCloud
 from database import init_db, get_db, Session
 from datetime import date
 import io
+import os
 import random
 import models
 import pandas as pd
@@ -138,11 +139,16 @@ async def todo_get(request: Request,
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    image=todo.image_path
+    path=f"static/media/{image}"
+    if not os.path.exists(path):
+        todo.image_path="Empty.png"
+        image="Empty.png"
     if todo is None:
         logger.info(f"Getting not existing todo: {todo}")
         return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
-    return templates.TemplateResponse("edit.html", {"request": request, "todo": todo, "fullnames": Users})
+    return templates.TemplateResponse("edit.html", {"request": request, "todo_id":todo_id, "todo": todo, "picture_name":image, "image":True, "fullnames": Users})
 
 
 @app.post("/edit/{todo_id}")
@@ -446,6 +452,29 @@ async def import_issues(request: Request, url: Annotated[str, Form()], token: An
 def import_log(request: Request, database: Session = Depends(get_db)):
     filenames = database.query(models.ImportedFiles).all()
     return templates.TemplateResponse("import_log.html", {"request": request, "filenames": filenames})
+
+
+@app.post("/load_image/{todo_id}")
+def load_image(request: Request,
+               todo_id : int,
+               file_input: UploadFile = Form(),
+               database: Session = Depends(get_db)):
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    content = file_input.file.read()
+    image=f"Image{todo.id}.png"
+    path=f"static/media/{image}"
+    buffer = io.BytesIO(content)
+    try:
+        with open(path, "wb") as f:
+            f.write(buffer.getbuffer())
+    except IsADirectoryError:
+        return templates.TemplateResponse("edit.html",
+                                          {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+                                           "image": True, "fullnames": Users})
+    todo.image_path=image
+    database.commit()
+
+    return templates.TemplateResponse("edit.html", {"request": request, "todo_id":todo_id, "todo": todo, "picture_name":image, "image":True, "fullnames": Users})
 
 
 if __name__ == "__main__":
