@@ -68,12 +68,15 @@ async def list_todo(request: Request,
                     limit: str = None,
                     skip: str = None):
     if limit is None:
-        if request.cookies.get('limit') is None or request.cookies.get('skip') is None:
+        if request.cookies.get('limit') is None:
             limit = "5"
-            skip = "0"
         else:
             limit = request.cookies.get('limit')
-            skip = request.cookies.get('skip')
+    if skip is None:
+        if request.cookies.get('skip') is None:
+            skip="0"
+        else:
+            skip=request.cookies.get('skip')
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
