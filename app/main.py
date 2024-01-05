@@ -140,9 +140,7 @@ async def todo_get(request: Request,
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     image=todo.image_path
-    print(image)
     path=f"static/media/{image}"
-
     if not os.path.exists(path):
         todo.image_path="Empty.png"
         image="Empty.png"
@@ -463,7 +461,7 @@ def load_image(request: Request,
                database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     content = file_input.file.read()
-    image=file_input.filename
+    image=f"Image{todo.id}.png"
     path=f"static/media/{image}"
     buffer = io.BytesIO(content)
     try:
