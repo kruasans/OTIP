@@ -164,7 +164,7 @@ async def todo_get(request: Request,
                                        "image": True, "fullnames": Users})
 
 
-@app.post("/edit/{todo_id}")
+@app.post("/edit/{todo_id}", status_code=status.HTTP_200_OK)
 async def todo_edit(
         request: Request,
         todo_id: int,
@@ -172,7 +172,9 @@ async def todo_edit(
         details: Annotated[str, Form(max_length=500)] = None,
         completed: bool = Form(False),
         fullname: Annotated[str, Form()] = "2021-3-26-cha",
-        database: Session = Depends(get_db)):
+        database: Session = Depends(get_db),
+        current_user: models.Users = Depends(oauth2.get_current_user)
+):
     """Edit todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -189,7 +191,9 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+        return {"answer": "ok"}
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.delete("/delete/{todo_id}")
