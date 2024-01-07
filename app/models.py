@@ -35,7 +35,7 @@ class ImportedFiles(Base):
 
 
 class Users(Base):
-    __tablename__ = 'todos'
+    __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
     name = Column(Text)
     password = Column(Text)
