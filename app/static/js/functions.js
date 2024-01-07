@@ -5,12 +5,6 @@ function ask_and_submit(button, id) {
     }
 }
 
-function delete_every_todo(){
-    var path = "/delete_all";
-    fetch(path, {method : "DELETE"});
-    window.location.href = "/";
-}
-
 function generation(count) {
     var path;
     if (!Number.isInteger(count)) {

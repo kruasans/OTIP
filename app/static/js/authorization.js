@@ -20,7 +20,7 @@ formData = new FormData()
             if(data["answer"] == "title not found"){
                 console.log(data);
             }
-            else if(data["answer"] == "good"){
+            else if(data["answer"] == "ok"){
                 window.location.href = "/list";
             }
 
@@ -65,6 +65,34 @@ function change_status(todo_id){
 
 function delete_entry(todo_id){
     var path = "/delete/" + todo_id;
+    fetch(path, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else{
+                console.error('Произошла ошибка:', error);
+                window.location.href = "/log_in";
+            }
+        })
+}
+
+function delete_every_todo(){
+    var path = "/delete_all/";
     fetch(path, {
         method: "DELETE",
         headers: {
