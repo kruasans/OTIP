@@ -42,3 +42,11 @@ function limit(lim) {
     var path = "/?limit="+lim;
     fetch(path, {method: "GET"});
     }
+
+
+const currentUserName = () => {
+    if (localStorage.getItem('username')) {
+        welcome.innerHTML = `Hi, <strong>${localStorage.getItem('username')}</strong>!`
+    }
+}
+currentUserName()
