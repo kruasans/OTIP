@@ -126,7 +126,7 @@ async def todo_add(request: Request,
     """Add new todo
     """
     if current_user.name != "user":
-        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise {"answer": "login"}
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
