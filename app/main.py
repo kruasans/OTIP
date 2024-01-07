@@ -226,7 +226,9 @@ async def todo_delete_all(request: Request, database: Session = Depends(get_db))
 @app.post("/change_status/{todo_id}")
 async def todo_change_status(request: Request,
                              todo_id: int,
-                             database: Session = Depends(get_db)):
+                             database: Session = Depends(get_db),
+                             current_user: models.Users = Depends(oauth2.get_current_user)
+                             ):
     """Change todo status on home page
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -240,7 +242,7 @@ async def todo_change_status(request: Request,
             logger.info(f"Editting status: {todo} to Done")
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer", "ok"}
 
 
 @app.post("/generate")
