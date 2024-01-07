@@ -28,11 +28,12 @@
     src="/static/media/{{picture_name}}"
     alt="Picture" />
     {% endif %}
-        <form action="/load_image/{{ todo_id }}" method="post" enctype="multipart/form-data" style="">
+<!--        <form action="/load_image/{{ todo_id }}" method="post" enctype="multipart/form-data" style="">-->
             <input placeholder="picture.png" type="file" id="file_input" name="file_input" accept=".png"
                    style="margin-bottom: 10px">
-            <button type="submit">Загрузить</button>
-        </form>
+            <button type="submit" onclick="load_image({{ todo.id }})">Загрузить</button>
+<!--        </form>-->
+<br>
     <a href="/list?type={{ todo.type }}">{{ todo.type }}</a>
 
 {% endblock content %}
