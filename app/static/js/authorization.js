@@ -1,5 +1,5 @@
 function add_todo(){
-formData = new FormData()
+    formData = new FormData()
     formData.append("title", document.getElementById('title_add').value)
     formData.append("details", document.getElementById('details_add').value)
     formData.append("type", document.getElementById('type').value)
@@ -114,6 +114,44 @@ function delete_every_todo(){
                 window.location.href = "/log_in";
             }else{
                 console.error('Произошла ошибка:', error);
+                window.location.href = "/log_in";
+            }
+        })
+}
+
+function upload(){
+    var path = "/upload/";
+    formData = new FormData();
+    var file_input = document.getElementById('file_input');
+    var file = file_input.files[0];
+    formData.append("file_input", file);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/list";
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else if(error.message == "403"){
+                alert("Файл неподходящего формата");
+                window.location.href = "/list";
+            }else{
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
                 window.location.href = "/log_in";
             }
         })
