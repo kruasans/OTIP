@@ -335,7 +335,6 @@ async def upload(request: Request,
     database.add(models.ImportedFiles(file_name=file_input.filename))
     database.commit()
     return {"answer": "ok"}
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.get("/visualization")
@@ -427,8 +426,12 @@ async def issue_page(request: Request):
 
 
 @app.post("/import_issues/")
-async def import_issues(request: Request, url: Annotated[str, Form()], token: Annotated[str, Form()],
-                        database: Session = Depends(get_db)):
+async def import_issues(
+        request: Request,
+        url: Annotated[str, Form()],
+        token: Annotated[str, Form()],
+        database: Session = Depends(get_db),
+        current_user: models.Users = Depends(oauth2.get_current_user)):
     try:
         if "http" not in url:
             raise Exception
@@ -438,7 +441,7 @@ async def import_issues(request: Request, url: Annotated[str, Form()], token: An
         gl = gitlab.Gitlab(plat, token)
         gl.auth()
     except (GitlabAuthenticationError, Exception):
-        return RedirectResponse(url=app.url_path_for("issue_page"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
     project = gl.projects.list(search=proj)
     issues = project[0].issues.list(get_all=True)
     issues.reverse()
@@ -472,9 +475,10 @@ async def import_issues(request: Request, url: Annotated[str, Form()], token: An
                        date_completion=date_completion,
                        completed=True if completed == "closed" else False,
                        fullname=fullname,
-                       database=database)
-
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer": "ok"}
 
 
 @app.get("/import_log/")
