@@ -140,7 +140,7 @@ async def todo_add(request: Request,
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
-        return {"answer": "good"}
+        return {"answer": "ok"}
     return {"answer": "title not found"}
 
 
@@ -208,11 +208,13 @@ async def todo_delete(request: Request,
     database.delete(todo)
     database.commit()
     return {"answer": "ok"}
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.delete("/delete_all")
-async def todo_delete_all(request: Request, database: Session = Depends(get_db)):
+async def todo_delete_all(request: Request,
+                          database: Session = Depends(get_db),
+                          current_user: models.Users = Depends(oauth2.get_current_user)
+                          ):
     """Delete all todos"""
     # Получаем все записи из базы данных
     all_todos = database.query(models.Todo).all()
