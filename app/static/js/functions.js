@@ -5,20 +5,6 @@ function ask_and_submit(button, id) {
     }
 }
 
-function generation(count) {
-    var path;
-    if (!Number.isInteger(count)) {
-        if (count == "") {
-            fetch("/generate", {method: "POST"});
-            window.location.href = "/list";
-            return;
-        }
-    }
-    path = "/generate?count=" + count;
-    fetch(path, {method: "POST"})
-    window.location.href = "/list";
-}
-
 function ask_and_submit_2() {
     var answer = confirm("Вы действительно хотите удалить все записи?");
     if (answer) {

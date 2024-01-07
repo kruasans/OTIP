@@ -321,3 +321,39 @@ function import_gitlab(){
             }
         })
 }
+
+function generation(count){
+    var path = "/generate/";
+    formData = new FormData();
+    formData.append("count", count);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/list";
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else if(error.message == "422"){
+                alert("Неверный формат данных");
+                location.reload();
+            }else{
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
