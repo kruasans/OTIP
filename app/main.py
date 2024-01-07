@@ -483,11 +483,15 @@ def import_log(request: Request, database: Session = Depends(get_db)):
     return templates.TemplateResponse("import_log.html", {"request": request, "filenames": filenames})
 
 
-@app.post("/load_image/{todo_id}")
+@app.post("/load_image/{todo_id}", status_code=status.HTTP_200_OK)
 def load_image(request: Request,
                todo_id: int,
                file_input: UploadFile = Form(),
-               database: Session = Depends(get_db)):
+               database: Session = Depends(get_db),
+               current_user: models.Users = Depends(oauth2.get_current_user)
+               ):
+    if file_input.filename.split(".")[-1] != 'png':
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     content = file_input.file.read()
     image = f"Image{todo.id}.png"
@@ -497,15 +501,16 @@ def load_image(request: Request,
         with open(path, "wb") as f:
             f.write(buffer.getbuffer())
     except IsADirectoryError:
-        return templates.TemplateResponse("edit.html",
-                                          {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
-                                           "image": True, "fullnames": Users})
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        # return templates.TemplateResponse("edit.html",
+        #                                   {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+        #                                    "image": True, "fullnames": Users})
     todo.image_path = image
     database.commit()
-
-    return templates.TemplateResponse("edit.html",
-                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
-                                       "image": True, "fullnames": Users})
+    return {"answer": "ok"}
+    # return templates.TemplateResponse("edit.html",
+    #                                   {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+    #                                    "image": True, "fullnames": Users})
 
 
 @app.get('/log_in')
