@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<button id="get-all-users">Get all Users</button>
+
+    <br><br>
+    <hr>
+    <br><br>
+
+    <div id="login-wrp">
+        <input type="text" id="username" placeholder="username"><br>
+        <input type="password" id="password" placeholder="password"><br>
+        <button id="login">Login</button>
+    </div>
+
+    <div id="user-section" style="display: none;">
+        <button id="logout">Logout</button>
+    </div>
+<script src="static/js/login.js"></script>
+{% endblock content %}
