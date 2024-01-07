@@ -196,3 +196,84 @@ function edit(todo_id){
             }
         })
 }
+
+function edit(todo_id){
+    var path = "/edit/" + todo_id;
+    formData = new FormData();
+    formData.append("title", document.getElementById('title').value);
+    formData.append("details", document.getElementById('details').value);
+    formData.append("completed", document.getElementById('completed').value);
+    formData.append("fullname", document.getElementById('fullname').value);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log(data);
+            window.location.href = "/list";
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else if(error.message == "422"){
+                alert("Неверный формат данных");
+                window.location.href = "/list";
+            }else{
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/log_in";
+            }
+        })
+}
+
+function load_image(todo_id){
+    var path = "/load_image/" + todo_id;
+    formData = new FormData();
+    var file_input = document.getElementById('file_input');
+    var file = file_input.files[0];
+    formData.append("file_input", file);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else if(error.message == "422"){
+                alert("Неверный формат данных");
+                location.reload();
+            }else if(error.message == "415"){
+                alert("Неверный формат картинки");
+                location.reload();
+            }else{
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
