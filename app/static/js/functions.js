@@ -46,7 +46,7 @@ function limit(lim) {
 
 const currentUserName = () => {
     if (localStorage.getItem('username')) {
-        welcome.innerHTML = `Hi, <strong>${localStorage.getItem('username')}</strong>!`
+        welcome.innerHTML = `<strong>${localStorage.getItem('username')}</strong>`
     }
 }
 currentUserName()
