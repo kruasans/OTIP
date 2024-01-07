@@ -254,9 +254,12 @@ async def todo_change_status(request: Request,
 
 
 @app.post("/generate")
-async def generate_todo(request: Request,
-                        database: Session = Depends(get_db),
-                        count: Annotated[int, None] = 10):
+async def generate_todo(
+        request: Request,
+        database: Session = Depends(get_db),
+        count: int = Form(default=10),
+        current_user: models.Users = Depends(oauth2.get_current_user)
+):
     titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
               "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар",
               "закладка",
@@ -271,9 +274,10 @@ async def generate_todo(request: Request,
                        type=type,
                        source=Source.source_generated.value,
                        details=None,
-                       database=database)
-    # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
-    return {"answer", "something"}
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer", "ok"}
 
 
 @app.get("/export")
