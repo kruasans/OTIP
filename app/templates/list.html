@@ -39,10 +39,8 @@
                         <span style="color:green;">Выполнил: {{ todo.fullname }} </span>
                     {% endif %}
                 </div>
-                <form action="change_status/{{ todo.id }}" method="post">
-                    <input class="completed-btn {% if todo.completed %}completed{% endif %}" type="submit"
-                           name="completed" value="Выполнить">
-                </form>
+                <input class="completed-btn {% if todo.completed %}completed{% endif %}" type="submit"
+                       name="completed" onclick="change_status({{ todo.id }})" value="Выполнить">
                 <small>
                     <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
                         <input class="edit-btn" type="submit" value="Редактировать">
