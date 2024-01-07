@@ -33,4 +33,32 @@ formData = new FormData()
                 console.error('Произошла ошибка:', error);
             }
         })
-        }
+}
+
+function change_status(todo_id){
+    var path = "/change_status/" + todo_id
+    fetch(path, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else{
+                console.error('Произошла ошибка:', error);
+                window.location.href = "/log_in";
+            }
+        })
+}
