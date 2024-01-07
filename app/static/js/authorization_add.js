@@ -18,10 +18,15 @@ blogPostBtn.addEventListener('click', () => {
     })
         .then(response => response.json())
         .then(data => {
-            if(data["answer"] == "title not found")
+            if(data["answer"] == "title not found"){
                 console.log(data);
-            else
+            }
+            else if(data["answer"] == "login"){
+                window.location.href = "/log_in";
+            }
+            else if(data["answer"] == "good"){
                 window.location.href = "/list";
+            }
         })
         .catch(error => console.error(error))
 })
