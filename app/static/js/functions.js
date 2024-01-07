@@ -1,9 +1,3 @@
-function delete_entry(id) {
-    var path = "/delete/" + id;
-    fetch(path, {method: "DELETE"});
-    location.reload();
-}
-
 function ask_and_submit(button, id) {
     var answer = confirm("Вы действительно хотите удалить эту запись?");
     if (answer) {
