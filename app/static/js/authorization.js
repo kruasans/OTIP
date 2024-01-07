@@ -31,6 +31,7 @@ function add_todo(){
                 window.location.href = "/log_in";
             }else{
                 console.error('Произошла ошибка:', error);
+                window.location.href = "/";
             }
         })
 }
@@ -58,7 +59,7 @@ function change_status(todo_id){
                 window.location.href = "/log_in";
             }else{
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/log_in";
+                window.location.href = "/";
             }
         })
 }
@@ -86,7 +87,7 @@ function delete_entry(todo_id){
                 window.location.href = "/log_in";
             }else{
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/log_in";
+                window.location.href = "/";
             }
         })
 }
@@ -114,7 +115,7 @@ function delete_every_todo(){
                 window.location.href = "/log_in";
             }else{
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/log_in";
+                window.location.href = "/";
             }
         })
 }
@@ -269,6 +270,49 @@ function load_image(todo_id){
                 location.reload();
             }else if(error.message == "415"){
                 alert("Неверный формат картинки");
+                location.reload();
+            }else{
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
+
+function import_gitlab(){
+    var path = "/import_issues/";
+    formData = new FormData();
+    formData.append("url", document.getElementById('url').value);
+    formData.append("token", document.getElementById('token_gitlab').value);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else if(error.message == "422"){
+                alert("Неверный формат данных");
+                location.reload();
+            }else if(error.message == "415"){
+                alert("Неверный формат картинки");
+                location.reload();
+            }else if(error.message == "301"){
+                alert("Ошибка авторизации по токену");
                 location.reload();
             }else{
                 console.error('Произошла ошибка:', error);
