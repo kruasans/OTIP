@@ -125,8 +125,7 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
-    if current_user.name != "user":
-        return {"answer": "login"}
+    print("в /add")
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
@@ -300,18 +299,21 @@ async def export(request: Request, database: Session = Depends(get_db)):
                     headers={"Content-Disposition": f"attachment; filename=Export.xlsx"})
 
 
-@app.post("/upload/")
+@app.post("/upload/", status_code=status.HTTP_200_OK)
 async def upload(request: Request,
                  file_input: UploadFile = Form(),
-                 database: Session = Depends(get_db)):
+                 database: Session = Depends(get_db),
+                 current_user: models.Users = Depends(oauth2.get_current_user)
+                 ):
     if file_input.filename.split(".")[-1] != 'xlsx':
-        return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        # return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,
                        converters={'date_creation': pd.to_datetime,
                                    'date_completion': pd.to_datetime})
-
+    print("перед /add")
     count_str = len(df.title)
     for i in range(0, count_str):
         await todo_add(request=request,
@@ -323,10 +325,12 @@ async def upload(request: Request,
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
                        completed=bool(df.completed[i]),
                        fullname=df.fullname[i],
-                       database=database)
+                       database=database,
+                       current_user=current_user)
     logger.info(f"File {file_input.filename} imported.")
     database.add(models.ImportedFiles(file_name=file_input.filename))
     database.commit()
+    return {"answer": "ok"}
     return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
