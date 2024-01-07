@@ -5,6 +5,9 @@ import math
 from loguru import logger
 from matplotlib import pyplot as plt
 from wordcloud import WordCloud
+
+import oauth2
+import schems
 from database import init_db, get_db, Session
 from datetime import date
 import io
@@ -16,7 +19,8 @@ import gitlab
 from gitlab import GitlabAuthenticationError
 import datetime
 
-from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +36,8 @@ templates = Jinja2Templates(directory="templates")
 
 app = FastAPI()
 
+oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
+
 logger = logger.opt(colors=True)
 # pylint: enable=invalid-name
 
@@ -44,6 +50,8 @@ async def home(request: Request,
                database: Session = Depends(get_db),
                limit: str = None):
     """Main page with todo list"""
+    if database.query(models.Users).filter(models.Users.name == "user").first() is None:
+        await create_user(schems.UserCreate(username="user", password="user"), database)
     if limit is None:
         if request.cookies.get('limit') is None:
             limit = "5"
@@ -75,9 +83,9 @@ async def list_todo(request: Request,
             limit = request.cookies.get('limit')
     if skip is None:
         if request.cookies.get('skip') is None:
-            skip="0"
+            skip = "0"
         else:
-            skip=request.cookies.get('skip')
+            skip = request.cookies.get('skip')
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -113,9 +121,12 @@ async def todo_add(request: Request,
                    completed: Annotated[bool, Form()] = False,
                    date_completion: Annotated[date, Form()] = None,
                    database: Session = Depends(get_db),
+                   current_user: models.Users = Depends(oauth2.get_current_user)
                    ):
     """Add new todo
     """
+    if current_user.name != "user":
+        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
@@ -129,7 +140,8 @@ async def todo_add(request: Request,
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+        return {"answer": "good"}
+    return {"answer": "title not found"}
 
 
 @app.get("/edit/{todo_id}", status_code=status.HTTP_200_OK)
@@ -139,16 +151,18 @@ async def todo_get(request: Request,
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    image=todo.image_path
-    path=f"static/media/{image}"
+    image = todo.image_path
+    path = f"static/media/{image}"
     if not os.path.exists(path):
-        todo.image_path="Empty.png"
-        image="Empty.png"
+        todo.image_path = "Empty.png"
+        image = "Empty.png"
     if todo is None:
         logger.info(f"Getting not existing todo: {todo}")
         return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
-    return templates.TemplateResponse("edit.html", {"request": request, "todo_id":todo_id, "todo": todo, "picture_name":image, "image":True, "fullnames": Users})
+    return templates.TemplateResponse("edit.html",
+                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+                                       "image": True, "fullnames": Users})
 
 
 @app.post("/edit/{todo_id}")
@@ -456,13 +470,13 @@ def import_log(request: Request, database: Session = Depends(get_db)):
 
 @app.post("/load_image/{todo_id}")
 def load_image(request: Request,
-               todo_id : int,
+               todo_id: int,
                file_input: UploadFile = Form(),
                database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     content = file_input.file.read()
-    image=f"Image{todo.id}.png"
-    path=f"static/media/{image}"
+    image = f"Image{todo.id}.png"
+    path = f"static/media/{image}"
     buffer = io.BytesIO(content)
     try:
         with open(path, "wb") as f:
@@ -471,10 +485,43 @@ def load_image(request: Request,
         return templates.TemplateResponse("edit.html",
                                           {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
                                            "image": True, "fullnames": Users})
-    todo.image_path=image
+    todo.image_path = image
     database.commit()
 
-    return templates.TemplateResponse("edit.html", {"request": request, "todo_id":todo_id, "todo": todo, "picture_name":image, "image":True, "fullnames": Users})
+    return templates.TemplateResponse("edit.html",
+                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+                                       "image": True, "fullnames": Users})
+
+
+@app.get('/log_in')
+def log_in(request: Request):
+    return templates.TemplateResponse("log_in.html", {"request": request})
+
+
+@app.post('/token')
+async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), database: Session = Depends(get_db)):
+    user = database.query(models.Users).filter(models.Users.name == form_data.username).first()
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Invalid credentials')
+    if not user.password == form_data.password:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Wrong password')
+
+    access_token = await oauth2.create_access_token(data={'username': user.name})
+
+    return {
+        'access_token': access_token,
+        'token_type': 'bearer',
+        'user_id': user.id,
+        'username': user.name
+    }
+
+
+async def create_user(form_data: schems.UserCreate, database: Session = Depends(get_db)):
+    new_user = models.Users(name=form_data.username, password=form_data.password)
+    database.add(new_user)
+    database.commit()
+    return new_user
 
 
 if __name__ == "__main__":
