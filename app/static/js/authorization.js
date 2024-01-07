@@ -156,3 +156,43 @@ function upload(){
             }
         })
 }
+
+function edit(todo_id){
+    var path = "/edit/" + todo_id;
+    formData = new FormData();
+    formData.append("title", document.getElementById('title').value);
+    formData.append("details", document.getElementById('details').value);
+    formData.append("completed", document.getElementById('completed').value);
+    formData.append("fullname", document.getElementById('fullname').value);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log(data);
+            window.location.href = "/list";
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/log_in";
+            }else if(error.message == "422"){
+                alert("Неверный формат данных");
+                window.location.href = "/list";
+            }else{
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/log_in";
+            }
+        })
+}
