@@ -126,7 +126,7 @@ async def todo_add(request: Request,
     """Add new todo
     """
     if current_user.name != "user":
-        raise {"answer": "login"}
+        return {"answer": "login"}
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
