@@ -5,6 +5,9 @@ import math
 from loguru import logger
 from matplotlib import pyplot as plt
 from wordcloud import WordCloud
+
+import oauth2
+import schems
 from database import init_db, get_db, Session
 from datetime import date
 import io
@@ -16,7 +19,8 @@ import gitlab
 from gitlab import GitlabAuthenticationError
 import datetime
 
-from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +36,8 @@ templates = Jinja2Templates(directory="templates")
 
 app = FastAPI()
 
+oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
+
 logger = logger.opt(colors=True)
 # pylint: enable=invalid-name
 
@@ -44,6 +50,8 @@ async def home(request: Request,
                database: Session = Depends(get_db),
                limit: str = None):
     """Main page with todo list"""
+    if database.query(models.Users).filter(models.Users.name == "user").first() is None:
+        await create_user(schems.UserCreate(username="user", password="user"), database)
     if limit is None:
         if request.cookies.get('limit') is None:
             limit = "5"
@@ -75,9 +83,9 @@ async def list_todo(request: Request,
             limit = request.cookies.get('limit')
     if skip is None:
         if request.cookies.get('skip') is None:
-            skip="0"
+            skip = "0"
         else:
-            skip=request.cookies.get('skip')
+            skip = request.cookies.get('skip')
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -113,9 +121,11 @@ async def todo_add(request: Request,
                    completed: Annotated[bool, Form()] = False,
                    date_completion: Annotated[date, Form()] = None,
                    database: Session = Depends(get_db),
+                   current_user: models.Users = Depends(oauth2.get_current_user)
                    ):
     """Add new todo
     """
+    print("в /add")
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
@@ -129,7 +139,8 @@ async def todo_add(request: Request,
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+        return {"answer": "ok"}
+    return {"answer": "title not found"}
 
 
 @app.get("/edit/{todo_id}", status_code=status.HTTP_200_OK)
@@ -139,19 +150,21 @@ async def todo_get(request: Request,
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    image=todo.image_path
-    path=f"static/media/{image}"
+    image = todo.image_path
+    path = f"static/media/{image}"
     if not os.path.exists(path):
-        todo.image_path="Empty.png"
-        image="Empty.png"
+        todo.image_path = "Empty.png"
+        image = "Empty.png"
     if todo is None:
         logger.info(f"Getting not existing todo: {todo}")
         return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
-    return templates.TemplateResponse("edit.html", {"request": request, "todo_id":todo_id, "todo": todo, "picture_name":image, "image":True, "fullnames": Users})
+    return templates.TemplateResponse("edit.html",
+                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+                                       "image": True, "fullnames": Users})
 
 
-@app.post("/edit/{todo_id}")
+@app.post("/edit/{todo_id}", status_code=status.HTTP_200_OK)
 async def todo_edit(
         request: Request,
         todo_id: int,
@@ -159,7 +172,9 @@ async def todo_edit(
         details: Annotated[str, Form(max_length=500)] = None,
         completed: bool = Form(False),
         fullname: Annotated[str, Form()] = "2021-3-26-cha",
-        database: Session = Depends(get_db)):
+        database: Session = Depends(get_db),
+        current_user: models.Users = Depends(oauth2.get_current_user)
+):
     """Edit todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -176,13 +191,17 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+        return {"answer": "ok"}
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.delete("/delete/{todo_id}")
 async def todo_delete(request: Request,
                       todo_id: int,
-                      database: Session = Depends(get_db)):
+                      database: Session = Depends(get_db),
+                      current_user: models.Users = Depends(oauth2.get_current_user)
+                      ):
     """Delete todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -191,11 +210,14 @@ async def todo_delete(request: Request,
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
-    return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer": "ok"}
 
 
 @app.delete("/delete_all")
-async def todo_delete_all(request: Request, database: Session = Depends(get_db)):
+async def todo_delete_all(request: Request,
+                          database: Session = Depends(get_db),
+                          current_user: models.Users = Depends(oauth2.get_current_user)
+                          ):
     """Delete all todos"""
     # Получаем все записи из базы данных
     all_todos = database.query(models.Todo).all()
@@ -212,7 +234,9 @@ async def todo_delete_all(request: Request, database: Session = Depends(get_db))
 @app.post("/change_status/{todo_id}")
 async def todo_change_status(request: Request,
                              todo_id: int,
-                             database: Session = Depends(get_db)):
+                             database: Session = Depends(get_db),
+                             current_user: models.Users = Depends(oauth2.get_current_user)
+                             ):
     """Change todo status on home page
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
@@ -226,13 +250,16 @@ async def todo_change_status(request: Request,
             logger.info(f"Editting status: {todo} to Done")
             todo.date_completion = date.today()
         database.commit()
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer", "ok"}
 
 
 @app.post("/generate")
-async def generate_todo(request: Request,
-                        database: Session = Depends(get_db),
-                        count: Annotated[int, None] = 10):
+async def generate_todo(
+        request: Request,
+        database: Session = Depends(get_db),
+        count: int = Form(default=10),
+        current_user: models.Users = Depends(oauth2.get_current_user)
+):
     titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
               "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар",
               "закладка",
@@ -247,9 +274,10 @@ async def generate_todo(request: Request,
                        type=type,
                        source=Source.source_generated.value,
                        details=None,
-                       database=database)
-    # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
-    return {"answer", "something"}
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer", "ok"}
 
 
 @app.get("/export")
@@ -279,18 +307,21 @@ async def export(request: Request, database: Session = Depends(get_db)):
                     headers={"Content-Disposition": f"attachment; filename=Export.xlsx"})
 
 
-@app.post("/upload/")
+@app.post("/upload/", status_code=status.HTTP_200_OK)
 async def upload(request: Request,
                  file_input: UploadFile = Form(),
-                 database: Session = Depends(get_db)):
+                 database: Session = Depends(get_db),
+                 current_user: models.Users = Depends(oauth2.get_current_user)
+                 ):
     if file_input.filename.split(".")[-1] != 'xlsx':
-        return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        # return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,
                        converters={'date_creation': pd.to_datetime,
                                    'date_completion': pd.to_datetime})
-
+    print("перед /add")
     count_str = len(df.title)
     for i in range(0, count_str):
         await todo_add(request=request,
@@ -302,11 +333,12 @@ async def upload(request: Request,
                        date_completion=df.date_completion[i] if bool(df.completed[i]) is True else None,
                        completed=bool(df.completed[i]),
                        fullname=df.fullname[i],
-                       database=database)
+                       database=database,
+                       current_user=current_user)
     logger.info(f"File {file_input.filename} imported.")
     database.add(models.ImportedFiles(file_name=file_input.filename))
     database.commit()
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer": "ok"}
 
 
 @app.get("/visualization")
@@ -398,8 +430,12 @@ async def issue_page(request: Request):
 
 
 @app.post("/import_issues/")
-async def import_issues(request: Request, url: Annotated[str, Form()], token: Annotated[str, Form()],
-                        database: Session = Depends(get_db)):
+async def import_issues(
+        request: Request,
+        url: Annotated[str, Form()],
+        token: Annotated[str, Form()],
+        database: Session = Depends(get_db),
+        current_user: models.Users = Depends(oauth2.get_current_user)):
     try:
         if "http" not in url:
             raise Exception
@@ -409,7 +445,7 @@ async def import_issues(request: Request, url: Annotated[str, Form()], token: An
         gl = gitlab.Gitlab(plat, token)
         gl.auth()
     except (GitlabAuthenticationError, Exception):
-        return RedirectResponse(url=app.url_path_for("issue_page"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
     project = gl.projects.list(search=proj)
     issues = project[0].issues.list(get_all=True)
     issues.reverse()
@@ -443,9 +479,10 @@ async def import_issues(request: Request, url: Annotated[str, Form()], token: An
                        date_completion=date_completion,
                        completed=True if completed == "closed" else False,
                        fullname=fullname,
-                       database=database)
-
-    return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer": "ok"}
 
 
 @app.get("/import_log/")
@@ -454,27 +491,65 @@ def import_log(request: Request, database: Session = Depends(get_db)):
     return templates.TemplateResponse("import_log.html", {"request": request, "filenames": filenames})
 
 
-@app.post("/load_image/{todo_id}")
+@app.post("/load_image/{todo_id}", status_code=status.HTTP_200_OK)
 def load_image(request: Request,
-               todo_id : int,
+               todo_id: int,
                file_input: UploadFile = Form(),
-               database: Session = Depends(get_db)):
+               database: Session = Depends(get_db),
+               current_user: models.Users = Depends(oauth2.get_current_user)
+               ):
+    if file_input.filename.split(".")[-1] != 'png':
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     content = file_input.file.read()
-    image=f"Image{todo.id}.png"
-    path=f"static/media/{image}"
+    image = f"Image{todo.id}.png"
+    path = f"static/media/{image}"
     buffer = io.BytesIO(content)
     try:
         with open(path, "wb") as f:
             f.write(buffer.getbuffer())
     except IsADirectoryError:
-        return templates.TemplateResponse("edit.html",
-                                          {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
-                                           "image": True, "fullnames": Users})
-    todo.image_path=image
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        # return templates.TemplateResponse("edit.html",
+        #                                   {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+        #                                    "image": True, "fullnames": Users})
+    todo.image_path = image
     database.commit()
+    return {"answer": "ok"}
+    # return templates.TemplateResponse("edit.html",
+    #                                   {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+    #                                    "image": True, "fullnames": Users})
 
-    return templates.TemplateResponse("edit.html", {"request": request, "todo_id":todo_id, "todo": todo, "picture_name":image, "image":True, "fullnames": Users})
+
+@app.get('/log_in')
+def log_in(request: Request):
+    return templates.TemplateResponse("log_in.html", {"request": request})
+
+
+@app.post('/token')
+async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), database: Session = Depends(get_db)):
+    user = database.query(models.Users).filter(models.Users.name == form_data.username).first()
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Invalid credentials')
+    if not user.password == form_data.password:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Wrong password')
+
+    access_token = await oauth2.create_access_token(data={'username': user.name})
+
+    return {
+        'access_token': access_token,
+        'token_type': 'bearer',
+        'user_id': user.id,
+        'username': user.name
+    }
+
+
+async def create_user(form_data: schems.UserCreate, database: Session = Depends(get_db)):
+    new_user = models.Users(name=form_data.username, password=form_data.password)
+    database.add(new_user)
+    database.commit()
+    return new_user
 
 
 if __name__ == "__main__":

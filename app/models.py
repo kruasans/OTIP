@@ -22,7 +22,7 @@ class Todo(Base):
     date_creation = Column(Date, default=date.today())
     date_completion = Column(Date, default=None)
     fullname = Column(Text, default="user")
-    image_path= Column(Text,default="Empty.png")
+    image_path = Column(Text, default="Empty.png")
 
     def __repr__(self):
         return f'<Todo {self.id}>'
@@ -32,3 +32,10 @@ class ImportedFiles(Base):
     __tablename__ = 'imported'
     id = Column(Integer, primary_key=True)
     file_name = Column(Text, default="")
+
+
+class Users(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    name = Column(Text)
+    password = Column(Text)
