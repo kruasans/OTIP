@@ -18,6 +18,8 @@ import pandas as pd
 import gitlab
 from gitlab import GitlabAuthenticationError
 import datetime
+from PIL import Image
+import imagehash
 
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi import FastAPI, Request, Depends, Form, status, Response, UploadFile, Cookie, HTTPException
@@ -501,24 +503,29 @@ def load_image(request: Request,
     if file_input.filename.split(".")[-1] != 'png':
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    hashes = database.query(models.Todo.hash).all()
     content = file_input.file.read()
     image = f"Image{todo.id}.png"
     path = f"static/media/{image}"
     buffer = io.BytesIO(content)
+
+    image_for_hash = Image.open(buffer)
+    hash = str(imagehash.average_hash(image_for_hash))
+    # print(f"Now loaded{hash}")
+    for loaded_hash in hashes:
+        print(f"loaded: {loaded_hash[0]}")
+        if hash == loaded_hash[0]:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+
     try:
         with open(path, "wb") as f:
             f.write(buffer.getbuffer())
     except IsADirectoryError:
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-        # return templates.TemplateResponse("edit.html",
-        #                                   {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
-        #                                    "image": True, "fullnames": Users})
     todo.image_path = image
+    todo.hash = str(hash)
     database.commit()
     return {"answer": "ok"}
-    # return templates.TemplateResponse("edit.html",
-    #                                   {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
-    #                                    "image": True, "fullnames": Users})
 
 
 @app.get('/log_in')
