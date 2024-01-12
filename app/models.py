@@ -23,6 +23,7 @@ class Todo(Base):
     date_completion = Column(Date, default=None)
     fullname = Column(Text, default="user")
     image_path = Column(Text, default="Empty.png")
+    hash = Column(Text, default="")
 
     def __repr__(self):
         return f'<Todo {self.id}>'
