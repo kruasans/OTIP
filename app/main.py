@@ -80,12 +80,12 @@ async def list_todo(request: Request,
                     limit: str = None,
                     skip: str = None):
     if limit is None:
-        if request.cookies.get('limit') is None:
+        if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
         else:
             limit = request.cookies.get('limit')
     if skip is None:
-        if request.cookies.get('skip') is None:
+        if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
             skip = "0"
         else:
             skip = request.cookies.get('skip')
@@ -98,16 +98,19 @@ async def list_todo(request: Request,
 
     skip_todos = limit * skip
     if skip > count_pages:
-        skip_todos = 0
+        skip_todos = skip = 0
     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
         skip_todos).limit(limit)
     if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
-                                                   {"request": request, "todos": todos,
-                                                    "limit": limit, "skip": skip,
-                                                    "count_pages": count_pages,
-                                                    "types": TodoTags, "type": type})
+                                                   {
+                                                       "request": request,
+                                                       "todos": todos,
+                                                       "limit": limit,
+                                                       "skip": skip,
+                                                       "count_pages": count_pages,
+                                                       "types": TodoTags, "type": type})
     template_response.set_cookie("limit", str(limit))
     template_response.set_cookie("skip", str(skip))
     return template_response
