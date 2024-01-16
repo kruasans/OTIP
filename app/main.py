@@ -30,6 +30,7 @@ from typing import Annotated
 import uvicorn
 
 from tags import TodoTags, Users, Source
+from hash_password import HashPassword
 
 init_db()
 
@@ -539,11 +540,10 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), database: 
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Invalid credentials')
-    if not user.password == form_data.password:
+    if not HashPassword.verify(user.password, form_data.password):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Wrong password')
 
     access_token = await oauth2.create_access_token(data={'username': user.name})
-
     return {
         'access_token': access_token,
         'token_type': 'bearer',
@@ -553,7 +553,7 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), database: 
 
 
 async def create_user(form_data: schems.UserCreate, database: Session = Depends(get_db)):
-    new_user = models.Users(name=form_data.username, password=form_data.password)
+    new_user = models.Users(name=form_data.username, password=HashPassword.bcrypt(form_data.password))
     database.add(new_user)
     database.commit()
     return new_user
