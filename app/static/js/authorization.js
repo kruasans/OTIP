@@ -28,8 +28,10 @@ function add_todo(){
         .catch(error => {
             if(error.message == "401"){
                 alert("Ошибка авторизации");
+                console.error('Произошла ошибка:', error);
                 window.location.href = "/log_in";
             }else{
+                alert("Ошибка");
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
             }
