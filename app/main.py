@@ -80,12 +80,12 @@ async def list_todo(request: Request,
                     limit: str = None,
                     skip: str = None):
     if limit is None:
-        if request.cookies.get('limit') is None:
+        if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
         else:
             limit = request.cookies.get('limit')
     if skip is None:
-        if request.cookies.get('skip') is None:
+        if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
             skip = "0"
         else:
             skip = request.cookies.get('skip')
