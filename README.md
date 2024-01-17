@@ -8,10 +8,10 @@ pip install --user --proxy http://login:pass@192.168.232.1:3128 -r requirements.
 pip install --user -r requirements.txt
 ```
 ```bash
-cd app
+cd application
 ```
 ```bash
-uvicorn main:app --reload
+uvicorn main:application --reload
 ```
 
 Задачи на ЛР1
@@ -51,7 +51,7 @@ sudo docker run --rm -p 80:80 2021-3-26-cha
 
 ## Запуск dpcker-образа для разработчика
 ```bash
-sudo docker run --rm -v "${PWD}/app":/code/app -p 80:80 2021-3-26-cha
+sudo docker run --rm -v "${PWD}/application":/application -p 80:80 2021-3-26-cha
 ```
 
 # genaration
