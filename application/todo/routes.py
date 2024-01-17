@@ -118,7 +118,7 @@ async def todo_get(request: Request,
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     image = todo.image_path
-    path = f"static/media/{image}"
+    path = f"/application/static/media/{image}"
     if not os.path.exists(path):
         todo.image_path = "Empty.png"
         image = "Empty.png"
@@ -465,13 +465,14 @@ def load_image(request: Request,
                database: Session = Depends(get_db),
                current_user: models_login.Users = Depends(get_current_user)
                ):
+    print("in func")
     if file_input.filename.split(".")[-1] != 'png':
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     hashes = database.query(models.Todo.hash).all()
     content = file_input.file.read()
     image = f"Image{todo.id}.png"
-    path = f"static/media/{image}"
+    path = f"/application/static/media/{image}"
     buffer = io.BytesIO(content)
 
     image_for_hash = Image.open(buffer)
