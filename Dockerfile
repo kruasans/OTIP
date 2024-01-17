@@ -8,9 +8,7 @@ else \
 	pip install --no-cache-dir --proxy "$PROXY" --upgrade -r /requirements.txt; \
 fi
 
-ENV PYTHONPATH "${PYTHONPATH}:/apps"
-
-COPY ./apps /apps
-CMD ["uvicorn", "apps.main:app", "--host", "0.0.0.0","--reload", "--port", "80"]
+COPY ./application /application
+CMD ["uvicorn", "application.main:app", "--host", "0.0.0.0","--reload", "--port", "80"]
 
 
