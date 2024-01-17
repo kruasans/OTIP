@@ -1,4 +1,4 @@
-"""Main of todo app
+"""Main of todo application
 """
 import math
 
@@ -223,7 +223,7 @@ async def todo_edit(
         database.commit()
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
+    # return RedirectResponse(url=application.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @app.delete("/delete/{todo_id}",tags=["Todo"])
@@ -345,7 +345,7 @@ async def upload(request: Request,
                  ):
     if file_input.filename.split(".")[-1] != 'xlsx':
         raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
-        # return RedirectResponse(url=app.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        # return RedirectResponse(url=application.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,

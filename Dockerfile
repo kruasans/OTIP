@@ -1,16 +1,16 @@
 FROM python:3.10-slim
 
-COPY ./requirements.txt /code/requirements.txt
+COPY ./requirements.txt /requirements.txt
 ARG PROXY
 RUN if [-z "$PROXY"] ; then \
-	pip install --no-cache-dir --upgrade -r /code/requirements.txt ;\
+	pip install --no-cache-dir --upgrade -r /requirements.txt ;\
 else \
-	pip install --no-cache-dir --proxy "$PROXY" --upgrade -r /code/requirements.txt; \
+	pip install --no-cache-dir --proxy "$PROXY" --upgrade -r /requirements.txt; \
 fi
 
-COPY ./app /code/app
-WORKDIR /code/app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0","--reload", "--port", "80"]
+ENV PYTHONPATH "${PYTHONPATH}:/apps"
 
+COPY ./apps /apps
+CMD ["uvicorn", "apps.main:app", "--host", "0.0.0.0","--reload", "--port", "80"]
 
 
