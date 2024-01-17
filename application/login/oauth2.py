@@ -10,12 +10,12 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from database import get_db
-import models
+from application.database import get_db
+import application.login.models as models
 
 password_context = CryptContext(schemes='bcrypt', deprecated='auto')
 
-oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
+oauth2_schema = OAuth2PasswordBearer(tokenUrl='login/token')
 
 SECRET_KEY = '52367badbf4e42f3a94d9ce456e1f01cbfee36a604da5c9589fa84f0bb9e661b'
 ALGORITHM = 'HS256'
