@@ -36,8 +36,32 @@ init_db()
 
 # pylint: disable=invalid-name
 templates = Jinja2Templates(directory="templates")
+tags_metadata= [
+    {
+        "name":"Home"
+    },
+    {
+        "name":"Todo"
+    },
+    {
+        "name":"Files"
+    },
+    {
+        "name":"User"
+    },
+    {
+        "name":"Generation"
+    },
+    {
+        "name":"Gitlab"
+    },
+    {
+        "name":"Lists"
+    }
 
-app = FastAPI()
+]
+
+app = FastAPI(title="TodoApp",summary="Application for making todos",openapi_tags=tags_metadata)
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl='token')
 
@@ -48,7 +72,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/media", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/", status_code=status.HTTP_200_OK)
+@app.get("/", status_code=status.HTTP_200_OK,tags=["Home"])
 async def home(request: Request,
                database: Session = Depends(get_db),
                limit: str = None):
@@ -73,7 +97,7 @@ async def home(request: Request,
     return template
 
 
-@app.get("/list")
+@app.get("/list",tags=["Lists"])
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
                     type: str = None,
@@ -116,7 +140,7 @@ async def list_todo(request: Request,
     return template_response
 
 
-@app.post("/add")
+@app.post("/add",tags=["Todo"])
 async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = TodoTags.education.value,
@@ -149,7 +173,7 @@ async def todo_add(request: Request,
     return {"answer": "title not found"}
 
 
-@app.get("/edit/{todo_id}", status_code=status.HTTP_200_OK)
+@app.get("/edit/{todo_id}", status_code=status.HTTP_200_OK,tags=["Todo"])
 async def todo_get(request: Request,
                    todo_id: int,
                    database: Session = Depends(get_db)):
@@ -170,7 +194,7 @@ async def todo_get(request: Request,
                                        "image": True, "fullnames": Users})
 
 
-@app.post("/edit/{todo_id}", status_code=status.HTTP_200_OK)
+@app.post("/edit/{todo_id}", status_code=status.HTTP_200_OK,tags=["Todo"])
 async def todo_edit(
         request: Request,
         todo_id: int,
@@ -202,7 +226,7 @@ async def todo_edit(
     # return RedirectResponse(url=app.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.delete("/delete/{todo_id}")
+@app.delete("/delete/{todo_id}",tags=["Todo"])
 async def todo_delete(request: Request,
                       todo_id: int,
                       database: Session = Depends(get_db),
@@ -219,7 +243,7 @@ async def todo_delete(request: Request,
     return {"answer": "ok"}
 
 
-@app.delete("/delete_all")
+@app.delete("/delete_all",tags=["Todo"])
 async def todo_delete_all(request: Request,
                           database: Session = Depends(get_db),
                           current_user: models.Users = Depends(oauth2.get_current_user)
@@ -237,7 +261,7 @@ async def todo_delete_all(request: Request,
     return RedirectResponse(url=app.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/change_status/{todo_id}")
+@app.post("/change_status/{todo_id}",tags=["Todo"])
 async def todo_change_status(request: Request,
                              todo_id: int,
                              database: Session = Depends(get_db),
@@ -259,7 +283,7 @@ async def todo_change_status(request: Request,
     return {"answer", "ok"}
 
 
-@app.post("/generate")
+@app.post("/generate",tags=["Generation"])
 async def generate_todo(
         request: Request,
         database: Session = Depends(get_db),
@@ -286,7 +310,7 @@ async def generate_todo(
     return {"answer", "ok"}
 
 
-@app.get("/export")
+@app.get("/export",tags=["Files"])
 async def export(request: Request, database: Session = Depends(get_db)):
     logger.info("Exporting")
     todos = database.query(models.Todo)
@@ -313,7 +337,7 @@ async def export(request: Request, database: Session = Depends(get_db)):
                     headers={"Content-Disposition": f"attachment; filename=Export.xlsx"})
 
 
-@app.post("/upload/", status_code=status.HTTP_200_OK)
+@app.post("/upload/", status_code=status.HTTP_200_OK,tags=["Files"])
 async def upload(request: Request,
                  file_input: UploadFile = Form(),
                  database: Session = Depends(get_db),
@@ -347,7 +371,7 @@ async def upload(request: Request,
     return {"answer": "ok"}
 
 
-@app.get("/visualization")
+@app.get("/visualization",tags=["Lists"])
 async def visualization(request: Request,
                         database: Session = Depends(get_db),
                         limit: int = None,
@@ -401,7 +425,7 @@ async def visualization(request: Request,
                                                              "count_pages": count_pages, "types": TodoTags})
 
 
-@app.get("/visualize/{todo_id}")
+@app.get("/visualize/{todo_id}",tags=["Files"])
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
@@ -420,22 +444,22 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
                     headers={"Content-Disposition": f"attachment; filename=Visualization{todo.id}.png"})
 
 
-@app.get("/pageFile")
+@app.get("/pageFile",tags=["Files"])
 async def page_file(request: Request):
     return templates.TemplateResponse("pageFile.html", {"request": request})
 
 
-@app.get("/generator")
+@app.get("/generator",tags=["Generation"])
 async def generator(request: Request):
     return templates.TemplateResponse("generator.html", {"request": request})
 
 
-@app.get("/import_issues")
+@app.get("/import_issues",tags=["Gitlab"])
 async def issue_page(request: Request):
     return templates.TemplateResponse("import_issues.html", {"request": request})
 
 
-@app.post("/import_issues/")
+@app.post("/import_issues/",tags=["Gitlab"])
 async def import_issues(
         request: Request,
         url: Annotated[str, Form()],
@@ -491,13 +515,13 @@ async def import_issues(
     return {"answer": "ok"}
 
 
-@app.get("/import_log/")
+@app.get("/import_log/",tags=["Files"])
 def import_log(request: Request, database: Session = Depends(get_db)):
     filenames = database.query(models.ImportedFiles).all()
     return templates.TemplateResponse("import_log.html", {"request": request, "filenames": filenames})
 
 
-@app.post("/load_image/{todo_id}", status_code=status.HTTP_200_OK)
+@app.post("/load_image/{todo_id}", status_code=status.HTTP_200_OK,tags=["Todo"])
 def load_image(request: Request,
                todo_id: int,
                file_input: UploadFile = Form(),
@@ -532,12 +556,12 @@ def load_image(request: Request,
     return {"answer": "ok"}
 
 
-@app.get('/log_in')
+@app.get('/log_in',tags=["User"])
 def log_in(request: Request):
     return templates.TemplateResponse("log_in.html", {"request": request})
 
 
-@app.post('/token')
+@app.post('/token',tags=["User"])
 async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), database: Session = Depends(get_db)):
     user = database.query(models.Users).filter(models.Users.name == form_data.username).first()
 
