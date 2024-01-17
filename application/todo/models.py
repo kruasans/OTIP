@@ -1,12 +1,7 @@
-"""Todo models
-"""
-
-from sqlalchemy import Column, Integer, Boolean, Text, Date, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, Boolean, Text, Date
 from datetime import date
-from tags import TodoTags
 
-Base = declarative_base()
+from application.database import Base
 
 
 class Todo(Base):
@@ -33,10 +28,3 @@ class ImportedFiles(Base):
     __tablename__ = 'imported'
     id = Column(Integer, primary_key=True)
     file_name = Column(Text, default="")
-
-
-class Users(Base):
-    __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    name = Column(Text)
-    password = Column(Text)

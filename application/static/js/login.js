@@ -31,7 +31,7 @@ function login(){
     formData.append('username', usernameInput.value)
     formData.append('password', passwordInput.value)
 
-    fetch('/token', {
+    fetch('/login/token', {
         method: 'POST',
         body: formData
     })
