@@ -246,32 +246,7 @@ class Test_class:
 
         expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
         assert result == expected
-
-    @staticmethod
-    async def test_todo_list():
-
-        # Подготовка данных и выполнение тестов
-        titles = ["text_title1", "text_title2", "text_title3", "text_title4", "text_title5"]
-
-        # Вызов add для каждого title
-        for title in titles:
-            client.post(
-                "/todo/add",
-                data={"title": title}
-            )
-
-        response = client.get(
-            "/test/todos",
-        )
-        todos = response.json()
-
-        response = client.get(
-            "/tests/todo_list?limit=5&skip=0"
-        )
-        result = response.json()
-
-        expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
-        assert result == expected
+        
 
     @staticmethod
     async def test_todo_list_with_type():
