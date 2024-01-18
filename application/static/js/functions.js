@@ -13,7 +13,14 @@ function ask_and_submit_2() {
     }
 
 function limit(lim) {
-    var path = "/?limit="+lim;
+    var limit;
+    if (lim > 10){
+        limit=10;
+    }
+    else{
+        limit=lim;
+    }
+    var path = "/?limit="+limit;
     fetch(path, {method: "GET"});
     }
 
