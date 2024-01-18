@@ -40,7 +40,6 @@ async def list_todo(request: Request,
                     type: str = None,
                     limit: str = None,
                     skip: str = None):
-    print(f"limit: {limit}")
     if limit is None:
         if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
@@ -64,10 +63,11 @@ async def list_todo(request: Request,
     count_pages = math.ceil(count_todos / limit)
 
     skip_todos = limit * skip
-    if skip > count_pages:
+    if skip >= count_pages:
         skip_todos = skip = 0
     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
         skip_todos).limit(limit)
+
     if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
@@ -98,7 +98,6 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
-    print(f"в /add: {title}")
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
@@ -176,7 +175,6 @@ async def todo_delete(request: Request,
                       ):
     """Delete todo
     """
-    print(todo_id)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
@@ -192,10 +190,7 @@ async def todo_delete_all(request: Request,
                           current_user: models_login.Users = Depends(get_current_user)
                           ):
     """Delete all todos"""
-    # Получаем все записи из базы данных
     all_todos = database.query(models.Todo).all()
-
-    # Удаляем каждую запись
     for todo in all_todos:
         await todo_delete(request=request,
                           todo_id=todo.id,
@@ -487,7 +482,6 @@ def load_image(request: Request,
 
     image_for_hash = Image.open(buffer)
     hash = str(imagehash.average_hash(image_for_hash))
-    # print(f"Now loaded{hash}")
     for loaded_hash in hashes:
         print(f"loaded: {loaded_hash[0]}")
         if hash == loaded_hash[0]:
