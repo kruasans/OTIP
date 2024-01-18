@@ -117,14 +117,15 @@ async def todo_get(request: Request,
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        logger.info(f"Getting not existing todo: {todo}")
+        raise HTTPException(status_code=301)
+        # return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     image = todo.image_path
     path = f"/application/static/media/{image}"
     if not os.path.exists(path):
         todo.image_path = "Empty.png"
         image = "Empty.png"
-    if todo is None:
-        logger.info(f"Getting not existing todo: {todo}")
-        return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
     return templates.TemplateResponse("edit.html",
                                       {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
@@ -398,13 +399,8 @@ async def issue_page(request: Request):
     return templates.TemplateResponse("import_issues.html", {"request": request})
 
 
-@router.post("/import_issues/", tags=["Gitlab"])
-async def import_issues(
-        request: Request,
-        url: Annotated[str, Form()],
-        token: Annotated[str, Form()],
-        database: Session = Depends(get_db),
-        current_user: models_login.Users = Depends(get_current_user)):
+def get_issues(url = Form(...),
+               token = Form(...)):
     try:
         if "http" not in url:
             raise Exception
@@ -418,7 +414,14 @@ async def import_issues(
     project = gl.projects.list(search=proj)
     issues = project[0].issues.list(get_all=True)
     issues.reverse()
-    print("find issues")
+    return issues
+
+@router.post("/import_issues/", tags=["Gitlab"])
+async def import_issues(
+        request: Request,
+        database: Session = Depends(get_db),
+        current_user: models_login.Users = Depends(get_current_user),
+        issues=Depends(get_issues)):
     for issue in issues:
         title = str(issue).split("title")[1].split("\'")[2]
         details = str(issue).split("description")[1].split("\'")[2]

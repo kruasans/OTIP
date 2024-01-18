@@ -12,6 +12,8 @@ from fastapi import FastAPI, Depends, HTTPException
 
 from application.todo import models as todo_models
 from application.todo import routes as todo_routes
+from application.todo import tags as tags
+from application.todo.routes import get_issues
 
 from application.login import models as login_models
 from application.login import routes as login_routes
@@ -40,6 +42,13 @@ def override_get_db():
 
 async def override_get_current_user():
     return login_models.Users(id=1, name="user", password="user")
+
+
+async def override_get_issues():
+    data=[]
+    with open("application/tests/data/issue.txt", "r", encoding='utf-8') as file:
+        data.append(file.read())
+    return data
 
 
 todo_models.Base.metadata.create_all(bind=engine)
@@ -73,6 +82,7 @@ client = TestClient(t_app)
 
 t_app.dependency_overrides[get_db] = override_get_db
 t_app.dependency_overrides[get_current_user] = override_get_current_user
+t_app.dependency_overrides[get_issues] = override_get_issues
 
 
 @pytest.mark.asyncio
@@ -163,3 +173,68 @@ class Test_class:
         count_after = len(response.json())
 
         assert count_after - count_before == differance
+
+    @staticmethod
+    async def test_import_issues():
+        title="Visualaze delete all todo button"
+        details=""
+        completed=True
+        type=tags.TodoTags.education.value
+        source = tags.Source.source_exported.value
+        fullname = tags.Users.user3.value
+        response = client.post(
+            "/todo/import_issues/",
+        )
+        import_responce = response.json()
+
+        response = client.get(
+            "/test/todos"
+        )
+        todos = response.json()
+        result = False
+        for todo in todos:
+            if todo["title"]==title and todo["details"]==details and todo["completed"] == completed and todo["type"]==type and todo["source"]==source and todo["fullname"]==fullname:
+                result = True
+        assert result is True
+        assert import_responce == {"answer": "ok"}
+
+    @staticmethod
+    async def test_edit_false():
+        id = -1
+        result_status = 301
+
+        response = client.get(
+            f"/todo/edit/{id}"
+        )
+        assert response.status_code == result_status
+
+    @staticmethod
+    async def test_edit():
+        client.post(
+            "/todo/add",
+            data={"title": "Some text"}
+        )
+        response = client.get(
+            "/test/todos"
+        )
+        todos = response.json()
+        id = 0
+        for todo in todos:
+            if todo["title"] == "Some text":
+                id = todo["id"]
+        response_edit = client.post(
+            f"/todo/edit/{id}",
+            data={"title": "Another text", "completed": True}
+        )
+        response = client.get(
+            "/test/todos"
+        )
+        todos = response.json()
+        result = False
+        for todo in todos:
+            if todo["title"]=="Another text" and todo["completed"]==True and todo["image_path"]=="Empty.png":
+                result = True
+        assert result == True
+        assert response_edit.status_code == 200
+
+
