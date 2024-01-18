@@ -92,7 +92,7 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
-    print("в /add")
+    print(f"в /add: {title}")
     if title is not None and title.replace(" ", "") != "" or title == "":
         todo = models.Todo(title=title,
                            details=details,
@@ -171,9 +171,11 @@ async def todo_delete(request: Request,
                       ):
     """Delete todo
     """
+    print(todo_id)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
-        return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        # return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
+        raise HTTPException(status_code=301)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
