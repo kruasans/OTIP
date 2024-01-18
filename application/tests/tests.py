@@ -41,7 +41,7 @@ async def override_get_current_user():
 
 async def override_get_issues():
     data=[]
-    with open("application/tests/data/issue.txt", "r", encoding='utf-8') as file:
+    with open("/application/tests/data/issue.txt", "r", encoding='utf-8') as file:
         data.append(file.read())
     return data
 
