@@ -1,0 +1,13 @@
+FROM 2021-3-26-cha
+
+COPY ./requirements_tests.txt /requirements_tests.txt
+ARG PROXY
+RUN if [-z "$PROXY"] ; then \
+	pip install --no-cache-dir --upgrade -r /requirements_tests.txt ;\
+else \
+	pip install --no-cache-dir --proxy "$PROXY" --upgrade -r /requirements_tests.txt; \
+fi
+
+COPY ./application/tests/tests.py /application/tests/tests.py
+
+WORKDIR /application/tests
