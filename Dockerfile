@@ -9,6 +9,4 @@ else \
 fi
 
 COPY ./application /application
-CMD ["uvicorn", "application.main:app", "--host", "0.0.0.0","--reload", "--port", "80"]
-
-
+# RUN chmod +x /application/script/wait-for-it.sh

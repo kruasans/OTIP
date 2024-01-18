@@ -45,11 +45,16 @@ async def list_todo(request: Request,
             limit = "5"
         else:
             limit = request.cookies.get('limit')
+    elif not limit.isdigit():
+        limit="5"
     if skip is None:
         if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
             skip = "0"
         else:
             skip = request.cookies.get('skip')
+    elif not skip.isdigit():
+        skip="0"
+    print(f"limit: {limit}")
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -58,10 +63,11 @@ async def list_todo(request: Request,
     count_pages = math.ceil(count_todos / limit)
 
     skip_todos = limit * skip
-    if skip > count_pages:
+    if skip >= count_pages:
         skip_todos = skip = 0
     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
         skip_todos).limit(limit)
+
     if type is None or not TodoTags.contains(type):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
@@ -116,14 +122,14 @@ async def todo_get(request: Request,
     """Get todo
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        logger.info(f"Getting not existing todo: {todo}")
+        raise HTTPException(status_code=301)
     image = todo.image_path
     path = f"/application/static/media/{image}"
     if not os.path.exists(path):
         todo.image_path = "Empty.png"
         image = "Empty.png"
-    if todo is None:
-        logger.info(f"Getting not existing todo: {todo}")
-        return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     logger.info(f"Getting todo: {todo}")
     return templates.TemplateResponse("edit.html",
                                       {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
@@ -159,7 +165,6 @@ async def todo_edit(
         database.commit()
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    # return RedirectResponse(url=application.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.delete("/delete/{todo_id}", tags=["Todo"])
@@ -172,7 +177,6 @@ async def todo_delete(request: Request,
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
-        # return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
         raise HTTPException(status_code=301)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
@@ -186,16 +190,12 @@ async def todo_delete_all(request: Request,
                           current_user: models_login.Users = Depends(get_current_user)
                           ):
     """Delete all todos"""
-    # Получаем все записи из базы данных
     all_todos = database.query(models.Todo).all()
-
-    # Удаляем каждую запись
     for todo in all_todos:
         await todo_delete(request=request,
                           todo_id=todo.id,
                           database=database)
-
-    return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer": "ok"}
 
 
 @router.post("/change_status/{todo_id}", tags=["Todo"])
@@ -282,7 +282,6 @@ async def upload(request: Request,
                  ):
     if file_input.filename.split(".")[-1] != 'xlsx':
         raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
-        # return RedirectResponse(url=application.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,
@@ -311,8 +310,8 @@ async def upload(request: Request,
 @router.get("/visualization", tags=["Lists"])
 async def visualization(request: Request,
                         database: Session = Depends(get_db),
-                        limit: int = None,
-                        skip: int = None):
+                        limit: str = None,
+                        skip: str = None):
     if limit is None:
         if request.cookies.get('limit') is None or request.cookies.get('skip_visualization') is None:
             limit = "5"
@@ -320,6 +319,10 @@ async def visualization(request: Request,
         else:
             limit = request.cookies.get('limit')
             skip = request.cookies.get('skip_visualization')
+    elif not limit.isdigit() or int(limit)==0:
+        limit="5"
+    if not skip.isdigit():
+        skip="0"
     limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -396,13 +399,8 @@ async def issue_page(request: Request):
     return templates.TemplateResponse("import_issues.html", {"request": request})
 
 
-@router.post("/import_issues/", tags=["Gitlab"])
-async def import_issues(
-        request: Request,
-        url: Annotated[str, Form()],
-        token: Annotated[str, Form()],
-        database: Session = Depends(get_db),
-        current_user: models_login.Users = Depends(get_current_user)):
+def get_issues(url = Form(...),
+               token = Form(...)):
     try:
         if "http" not in url:
             raise Exception
@@ -416,7 +414,14 @@ async def import_issues(
     project = gl.projects.list(search=proj)
     issues = project[0].issues.list(get_all=True)
     issues.reverse()
-    print("find issues")
+    return issues
+
+@router.post("/import_issues/", tags=["Gitlab"])
+async def import_issues(
+        request: Request,
+        database: Session = Depends(get_db),
+        current_user: models_login.Users = Depends(get_current_user),
+        issues=Depends(get_issues)):
     for issue in issues:
         title = str(issue).split("title")[1].split("\'")[2]
         details = str(issue).split("description")[1].split("\'")[2]
@@ -477,7 +482,6 @@ def load_image(request: Request,
 
     image_for_hash = Image.open(buffer)
     hash = str(imagehash.average_hash(image_for_hash))
-    # print(f"Now loaded{hash}")
     for loaded_hash in hashes:
         print(f"loaded: {loaded_hash[0]}")
         if hash == loaded_hash[0]:
