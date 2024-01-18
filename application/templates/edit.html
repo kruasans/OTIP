@@ -32,6 +32,6 @@
                    style="margin-bottom: 10px">
             <button type="submit" onclick="load_image({{ todo.id }})">Загрузить</button>
 <br>
-    <a href="/list?type={{ todo.type }}">{{ todo.type }}</a>
+    <a href="/todo/list?type={{ todo.type }}">{{ todo.type }}</a>
 
 {% endblock content %}
