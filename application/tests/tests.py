@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from fastapi.testclient import TestClient
@@ -19,16 +21,9 @@ from application.login.oauth2 import get_current_user
 
 t_app = FastAPI()
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./application/tests/t_bd.sqlite"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
+TEST_DB_URL = os.environ["DATABASE_URL"]
+engine = create_engine(TEST_DB_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def override_get_db():
     db = TestingSessionLocal()
