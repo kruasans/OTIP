@@ -153,7 +153,7 @@ class Test_class:
         )
         count_before = len(response.json())
 
-        response = client.post(
+        client.post(
             f"/test/upload?filename={filename}",
         )
 
