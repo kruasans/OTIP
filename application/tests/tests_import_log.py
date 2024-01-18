@@ -37,6 +37,7 @@ def override_get_db():
     finally:
         db.close()
 
+
 async def override_get_current_user():
     return login_models.Users(id=1, name="user", password="user")
 
@@ -69,10 +70,6 @@ async def get_imported_files(filename: str = "file_name.xlsx", database: Session
 
 
 client = TestClient(t_app)
-
-
-
-
 
 t_app.dependency_overrides[get_db] = override_get_db
 t_app.dependency_overrides[get_current_user] = override_get_current_user
@@ -148,11 +145,21 @@ class Test_class:
 
     @staticmethod
     async def test_import_log_wrong_file_format():
-        response_status = 301
         filename = "test_file_wrong_format.csv"
+        differance = 0
+
+        response = client.get(
+            "/test/import_files",
+        )
+        count_before = len(response.json())
 
         response = client.post(
             f"/test/upload?filename={filename}",
         )
 
-        assert response.status_code == response_status
+        response = client.get(
+            "/test/import_files",
+        )
+        count_after = len(response.json())
+
+        assert count_after - count_before == differance
