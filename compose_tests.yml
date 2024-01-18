@@ -4,8 +4,6 @@ services:
   db:
     image: postgres
     container_name: db
-    env_file:
-      - .env-file
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -22,8 +20,6 @@ services:
     volumes:
       - ./application:/application
     restart: always
-    env_file:
-      - .env-file
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
     entrypoint: /bin/sh -c "pytest /application/tests/tests.py"
