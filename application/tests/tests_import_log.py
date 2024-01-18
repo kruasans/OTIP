@@ -1,15 +1,14 @@
 import pytest
-import os
-import tempfile
-import asyncio
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
-from application.database import Base, get_db
+from starlette import status
 
-from fastapi import FastAPI, Depends
+from application.database import get_db
+
+from fastapi import FastAPI, Depends, HTTPException
 
 from application.todo import models as todo_models
 from application.todo import routes as todo_routes
@@ -38,6 +37,9 @@ def override_get_db():
     finally:
         db.close()
 
+async def override_get_current_user():
+    return login_models.Users(id=1, name="user", password="user")
+
 
 todo_models.Base.metadata.create_all(bind=engine)
 login_models.Base.metadata.create_all(bind=engine)
@@ -51,11 +53,25 @@ async def get_todos(database: Session = Depends(get_db)):
     return database.query(todo_models.Todo).all()
 
 
+@t_app.get("/test/import_files")
+async def get_imported_files(database: Session = Depends(get_db)):
+    return database.query(todo_models.ImportedFiles).all()
+
+
+@t_app.post("/test/upload", status_code=200)
+async def get_imported_files(filename: str = "file_name.xlsx", database: Session = Depends(get_db)):
+    print(filename)
+    if filename.split(".")[-1] != 'xlsx':
+        raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
+    database.add(todo_models.ImportedFiles(file_name=filename))
+    database.commit()
+    return {"answer": "ok"}
+
+
 client = TestClient(t_app)
 
 
-async def override_get_current_user():
-    return login_models.Users(id=1, name="user", password="user")
+
 
 
 t_app.dependency_overrides[get_db] = override_get_db
@@ -111,3 +127,32 @@ class Test_class:
         )
         assert response.status_code == result_status
 
+    @staticmethod
+    async def test_import_log_true():
+        filename = "test_file.xlsx"
+        differance = 1
+
+        response = client.get(
+            "/test/import_files",
+        )
+        count_before = len(response.json())
+        client.post(
+            f"/test/upload?filename={filename}",
+        )
+        response = client.get(
+            "/test/import_files",
+        )
+        count_after = len(response.json())
+
+        assert count_after - count_before == differance
+
+    @staticmethod
+    async def test_import_log_wrong_file_format():
+        response_status = 301
+        filename = "test_file_wrong_format.csv"
+
+        response = client.post(
+            f"/test/upload?filename={filename}",
+        )
+
+        assert response.status_code == response_status
