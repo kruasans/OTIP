@@ -76,7 +76,8 @@ sudo docker-compose -f compose.yml up -d --build
 
 ## Тесты
 ```bash
-sudo docker-compose -f compose_tests.yml up -b --build
+sudo docker build -t 2021-3-26-cha .
+sudo docker-compose -f compose_tests.yml up --build
 ```
 
 ## Остановка
