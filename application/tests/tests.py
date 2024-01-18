@@ -12,10 +12,13 @@ from fastapi import FastAPI, Depends, HTTPException
 
 from application.todo import models as todo_models
 from application.todo import routes as todo_routes
+from application.todo.routes import get_todos_list
 
 from application.login import models as login_models
 from application.login import routes as login_routes
 from application.login.oauth2 import get_current_user
+
+
 
 t_app = FastAPI()
 
@@ -51,8 +54,7 @@ t_app.include_router(login_routes.router)
 
 @t_app.get("/test/todos")
 async def get_todos(database: Session = Depends(get_db)):
-    return database.query(todo_models.Todo).all()
-
+    return (database.query(todo_models.Todo).all())
 
 @t_app.get("/test/import_files")
 async def get_imported_files(database: Session = Depends(get_db)):
@@ -68,6 +70,15 @@ async def get_imported_files(filename: str = "file_name.xlsx", database: Session
     database.commit()
     return {"answer": "ok"}
 
+@t_app.get("/test/list")
+async def list_todo(
+                    database: Session = Depends(get_db),
+                    type: str = None,
+                    limit: str = None,
+                    skip: str = None):
+    todos = await get_todos_list(database=database, type=type, limit=limit, skip=skip)
+    todos = [todo for todo in todos]
+    return todos
 
 client = TestClient(t_app)
 
@@ -164,6 +175,7 @@ class Test_class:
 
         assert count_after - count_before == differance
 
+    # test ручки /add
     @staticmethod
     async def test_add_false():
         response = client.post(
@@ -188,3 +200,41 @@ class Test_class:
                 assert todo["title"] == title
                 return
         return False
+
+    @staticmethod
+    async def test_todo_list():
+
+        # Подготовка данных и выполнение тестов
+        titles = ["text_title1", "text_title2", "text_title3", "text_title4", "text_title5"]
+
+        # Вызов add для каждого title
+        for title in titles:
+            client.post(
+                "/todo/add",
+                data={"title": title}
+            )
+
+        response = client.get(
+            "/test/todos",
+        )
+        todos = response.json()
+
+        result = client.get(
+            "/test/list?limit=5&skip=0",
+        )
+        result = result.json()
+        expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
+        assert result == expected
+
+        # Тест 2: Пример с отсутствием параметра "type"
+        # result = get_todos_list(limit="5", skip="0")
+        # assert isinstance(result, todo_models.query(todo_models.Todo).all())
+        #
+        # # Тест 3: Пример с отсутствием параметра "limit"
+        # result = get_todos_list(type="Plan", skip="0")
+        # assert isinstance(result, todo_models.query(todo_models.Todo).all())
+        #
+        # # Тест 4: Пример с отсутствием параметра "skip"
+        # result = get_todos_list(type="Plan", limit="5")
+        # assert isinstance(result, todo_models.query(todo_models.Todo).all())
+
