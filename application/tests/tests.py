@@ -1,4 +1,5 @@
 import pytest
+import math
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -12,13 +13,11 @@ from fastapi import FastAPI, Depends, HTTPException
 
 from application.todo import models as todo_models
 from application.todo import routes as todo_routes
-from application.todo.routes import get_todos_list
 
 from application.login import models as login_models
 from application.login import routes as login_routes
 from application.login.oauth2 import get_current_user
-
-
+from application.todo.tags import TodoTags
 
 t_app = FastAPI()
 
@@ -51,10 +50,16 @@ login_models.Base.metadata.create_all(bind=engine)
 t_app.include_router(todo_routes.router)
 t_app.include_router(login_routes.router)
 
+client = TestClient(t_app)
+
+t_app.dependency_overrides[get_db] = override_get_db
+t_app.dependency_overrides[get_current_user] = override_get_current_user
+
 
 @t_app.get("/test/todos")
 async def get_todos(database: Session = Depends(get_db)):
-    return (database.query(todo_models.Todo).all())
+    return database.query(todo_models.Todo).all()
+
 
 @t_app.get("/test/import_files")
 async def get_imported_files(database: Session = Depends(get_db)):
@@ -70,20 +75,29 @@ async def get_imported_files(filename: str = "file_name.xlsx", database: Session
     database.commit()
     return {"answer": "ok"}
 
-@t_app.get("/test/list")
-async def list_todo(
-                    database: Session = Depends(get_db),
-                    type: str = None,
-                    limit: str = None,
-                    skip: str = None):
-    todos = await get_todos_list(database=database, type=type, limit=limit, skip=skip)
+
+@t_app.get("/tests/todo_list")
+async def t_list_todo(
+        limit: str = "5",
+        skip: str = "0",
+        type: str = None,
+        database: Session = Depends(get_db)):
+    limit, skip = int(limit), int(skip)
+    count_todos = database.query(todo_models.Todo).count() if type is None or not TodoTags.contains(
+        type) else database.query(todo_models.Todo).filter(
+        todo_models.Todo.type == type).count()
+    count_pages = math.ceil(count_todos / limit)
+
+    skip_todos = limit * skip
+    if skip > count_pages:
+        skip_todos = skip = 0
+    todos = database.query(todo_models.Todo).order_by(todo_models.Todo.id.desc()).filter(
+        todo_models.Todo.type == type).offset(
+        skip_todos).limit(limit)
+    if type is None or not TodoTags.contains(type):
+        todos = database.query(todo_models.Todo).order_by(todo_models.Todo.id.desc()).offset(skip_todos).limit(limit)
     todos = [todo for todo in todos]
     return todos
-
-client = TestClient(t_app)
-
-t_app.dependency_overrides[get_db] = override_get_db
-t_app.dependency_overrides[get_current_user] = override_get_current_user
 
 
 @pytest.mark.asyncio
@@ -219,22 +233,89 @@ class Test_class:
         )
         todos = response.json()
 
-        result = client.get(
-            "/test/list?limit=5&skip=0",
+        response = client.get(
+            "/tests/todo_list?limit=5&skip=0"
         )
-        result = result.json()
+        result = response.json()
+
         expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
         assert result == expected
 
-        # Тест 2: Пример с отсутствием параметра "type"
-        # result = get_todos_list(limit="5", skip="0")
-        # assert isinstance(result, todo_models.query(todo_models.Todo).all())
-        #
-        # # Тест 3: Пример с отсутствием параметра "limit"
-        # result = get_todos_list(type="Plan", skip="0")
-        # assert isinstance(result, todo_models.query(todo_models.Todo).all())
-        #
-        # # Тест 4: Пример с отсутствием параметра "skip"
-        # result = get_todos_list(type="Plan", limit="5")
-        # assert isinstance(result, todo_models.query(todo_models.Todo).all())
+    @staticmethod
+    async def test_todo_list():
 
+        # Подготовка данных и выполнение тестов
+        titles = ["text_title1", "text_title2", "text_title3", "text_title4", "text_title5"]
+
+        # Вызов add для каждого title
+        for title in titles:
+            client.post(
+                "/todo/add",
+                data={"title": title}
+            )
+
+        response = client.get(
+            "/test/todos",
+        )
+        todos = response.json()
+
+        response = client.get(
+            "/tests/todo_list?limit=5&skip=0"
+        )
+        result = response.json()
+
+        expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
+        assert result == expected
+
+    @staticmethod
+    async def test_todo_list_with_type():
+
+        # Подготовка данных и выполнение тестов
+        titles = ["text_title1", "text_title2", "text_title3", "text_title4", "text_title5"]
+
+        # Вызов add для каждого title
+        for title in titles:
+            client.post(
+                "/todo/add",
+                data={"title": title,
+                      "type": "Plan"}
+            )
+
+        response = client.get(
+            "/test/todos",
+        )
+        todos = response.json()
+
+        response = client.get(
+            "/tests/todo_list?type=Plan&limit=5&skip=0"
+        )
+        result = response.json()
+
+        expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
+        assert result == expected
+
+    @staticmethod
+    async def test_todo_list_with_skip1():
+
+        # Подготовка данных и выполнение тестов
+        titles = ["text_title1", "text_title2", "text_title3", "text_title4", "text_title5"]
+
+        # Вызов add для каждого title
+        for title in titles:
+            client.post(
+                "/todo/add",
+                data={"title": title}
+            )
+
+        response = client.get(
+            "/test/todos",
+        )
+        todos = response.json()
+
+        response = client.get(
+            "/tests/todo_list?limit=5&skip=1"
+        )
+        result = response.json()
+
+        expected = [todos[i] for i in range(len(todos) - 6, len(todos) - 11, -1)]
+        assert result == expected

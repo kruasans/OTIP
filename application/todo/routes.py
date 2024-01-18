@@ -34,27 +34,6 @@ router = APIRouter(
 )
 
 
-async def get_todos_list(database,
-                         type: str = Form(...),
-                         limit: str = Form(...),
-                         skip: str = Form(...)):
-    limit, skip = int(limit), int(skip)
-    logger.info("Todo list")
-    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
-        type) else database.query(models.Todo).filter(
-        models.Todo.type == type).count()
-    count_pages = math.ceil(count_todos / limit)
-
-    skip_todos = limit * skip
-    if skip > count_pages:
-        skip_todos = skip = 0
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
-        skip_todos).limit(limit)
-    if type is None or not TodoTags.contains(type):
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
-    return todos
-
-
 @router.get("/list", tags=["Lists"])
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
@@ -71,11 +50,20 @@ async def list_todo(request: Request,
             skip = "0"
         else:
             skip = request.cookies.get('skip')
-    todos = get_todos_list(database=database, type=type, limit=limit, skip=skip)
+    limit, skip = int(limit), int(skip)
+    logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
         type) else database.query(models.Todo).filter(
         models.Todo.type == type).count()
     count_pages = math.ceil(count_todos / limit)
+
+    skip_todos = limit * skip
+    if skip > count_pages:
+        skip_todos = skip = 0
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+        skip_todos).limit(limit)
+    if type is None or not TodoTags.contains(type):
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
                                                    {
                                                        "request": request,
