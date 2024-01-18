@@ -56,7 +56,7 @@
         {% if count_pages != 1 %}
             {% for i in range(count_pages) %}
                 <a rel={{ i }} {% if i == skip %}style="color:green;"{% endif %}
-                   href="/list?type={{ type }}&limit={{ limit }}&skip={{ i }}">{{ i }}</a>
+                   href="/todo/list?type={{ type }}&limit={{ limit }}&skip={{ i }}">{{ i }}</a>
             {% endfor %}
         {% endif %}
     </div>
