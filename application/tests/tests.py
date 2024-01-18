@@ -163,3 +163,28 @@ class Test_class:
         count_after = len(response.json())
 
         assert count_after - count_before == differance
+
+    @staticmethod
+    async def test_add_false():
+        response = client.post(
+            "/todo/add",
+        )
+        assert response.json() == {"answer": "title not found"}
+
+    @staticmethod
+    async def test_add_true():
+        title = "text_title"
+        response = client.post(
+            "/todo/add",
+            data={"title": title}
+        )
+        assert response.json() == {"answer": "ok"}
+        response = client.get(
+            "test/todos"
+        )
+        todos = response.json()
+        for todo in todos:
+            if todo["title"] == title:
+                assert todo["title"] == title
+                return
+        return False
