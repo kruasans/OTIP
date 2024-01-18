@@ -40,16 +40,22 @@ async def list_todo(request: Request,
                     type: str = None,
                     limit: str = None,
                     skip: str = None):
+    print(f"limit: {limit}")
     if limit is None:
         if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
         else:
             limit = request.cookies.get('limit')
+    elif not limit.isdigit():
+        limit="5"
     if skip is None:
         if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
             skip = "0"
         else:
             skip = request.cookies.get('skip')
+    elif not skip.isdigit():
+        skip="0"
+    print(f"limit: {limit}")
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -120,7 +126,6 @@ async def todo_get(request: Request,
     if todo is None:
         logger.info(f"Getting not existing todo: {todo}")
         raise HTTPException(status_code=301)
-        # return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     image = todo.image_path
     path = f"/application/static/media/{image}"
     if not os.path.exists(path):
@@ -161,7 +166,6 @@ async def todo_edit(
         database.commit()
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    # return RedirectResponse(url=application.url_path_for("list_todo"), status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.delete("/delete/{todo_id}", tags=["Todo"])
@@ -175,7 +179,6 @@ async def todo_delete(request: Request,
     print(todo_id)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
-        # return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
         raise HTTPException(status_code=301)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
@@ -197,8 +200,7 @@ async def todo_delete_all(request: Request,
         await todo_delete(request=request,
                           todo_id=todo.id,
                           database=database)
-
-    return RedirectResponse(url=router.url_path_for("home"), status_code=status.HTTP_303_SEE_OTHER)
+    return {"answer": "ok"}
 
 
 @router.post("/change_status/{todo_id}", tags=["Todo"])
@@ -285,7 +287,6 @@ async def upload(request: Request,
                  ):
     if file_input.filename.split(".")[-1] != 'xlsx':
         raise HTTPException(status_code=status.HTTP_301_MOVED_PERMANENTLY)
-        # return RedirectResponse(url=application.url_path_for("page_file"), status_code=status.HTTP_301_MOVED_PERMANENTLY)
     content = file_input.file.read()
     buffer = io.BytesIO(content)
     df = pd.read_excel(buffer,
@@ -314,8 +315,8 @@ async def upload(request: Request,
 @router.get("/visualization", tags=["Lists"])
 async def visualization(request: Request,
                         database: Session = Depends(get_db),
-                        limit: int = None,
-                        skip: int = None):
+                        limit: str = None,
+                        skip: str = None):
     if limit is None:
         if request.cookies.get('limit') is None or request.cookies.get('skip_visualization') is None:
             limit = "5"
@@ -323,6 +324,10 @@ async def visualization(request: Request,
         else:
             limit = request.cookies.get('limit')
             skip = request.cookies.get('skip_visualization')
+    elif not limit.isdigit() or int(limit)==0:
+        limit="5"
+    if not skip.isdigit():
+        skip="0"
     limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
