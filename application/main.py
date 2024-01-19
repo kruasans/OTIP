@@ -46,7 +46,6 @@ async def home(request: Request,
                limit: str = None):
     """Main page with todo list"""
     if database.query(user_models.Users).filter(user_models.Users.name == "user").first() is None:
-        print("user отсутствует")
         await user_routes.create_user(UserCreate(username="user", password="user"), database)
     if limit is None:
         if request.cookies.get('limit') is None:

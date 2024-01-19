@@ -9,9 +9,14 @@ const logoutBtn = document.querySelector('#logout')
 
 const currentUser = () => {
     if (localStorage.getItem('username')) {
-        loginWrp.style.display = 'none'
-        userSection.style.display = 'block'
-        welcome.innerHTML = `<strong>${localStorage.getItem('username')}</strong>`
+        loginWrp.style.display = 'none';
+        userSection.style.display = 'block';
+        welcome.innerHTML = `<strong>${localStorage.getItem('username')}</strong>`;
+    }
+    else{
+        loginWrp.style.display = 'block';
+        userSection.style.display = 'none';
+        welcome.innerHTML = 'Unauthorized';
     }
 }
 
