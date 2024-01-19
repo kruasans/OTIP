@@ -6,6 +6,9 @@
         </div>
         <textarea id="title" name="title" rows="3">{{todo.title}}</textarea>
         <textarea id="details" name="details" rows="5">{{todo.details}}</textarea>
+        <button type="submit" >Дополнить</button>
+        <br>
+        <br>
         <label for="completed">Выполнено?</label>
         <input id="completed" type="checkbox" name="completed" {% if todo.completed %}checked{% endif %}>
         <select id="fullname" name="fullname">
