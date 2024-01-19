@@ -325,3 +325,31 @@ function generation(count){
             }
         })
 }
+
+function delete_todo_in_range(start, end, type){
+    var path = "/todo/delete_range?start=" + start + "&end=" + end;
+    fetch(path, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') }`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            if(response.status!=200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/todo/list?type=" + type;
+        })
+        .catch(error => {
+            if(error.message == "401"){
+                alert("Ошибка авторизации");
+                window.location.href = "/login/log_in";
+            }else{
+                console.error('Произошла ошибка:', error);
+                window.location.href = "/";
+            }
+        })
+}

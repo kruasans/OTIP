@@ -197,6 +197,37 @@ async def todo_delete_all(request: Request,
                           database=database)
     return {"answer": "ok"}
 
+@router.delete("/delete_range", tags=["Todo"])
+async def todo_delete_range(request: Request,
+                            start: str = "0",
+                            end: str = "0",
+                            type: str = None,
+                            database: Session = Depends(get_db),
+                            current_user: models_login.Users = Depends(get_current_user),
+                            ):
+
+    if start.isdigit() and end.isdigit():
+
+        start, end = int(start), int(end)
+
+        if start > end:
+            raise HTTPException(status_code=400)
+        query = database.query(models.Todo)
+        if type is None and TodoTags.contains(type):
+            query = query.filter(models.Todo.type == type)
+
+        count_todos = query.count()
+        if start <= 0 or end > count_todos:
+            raise HTTPException(status_code=400)
+
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type)
+
+        for todo in todos:
+            database.delete(todo)
+
+        database.commit()
+        return {"answer": "ok"}
+
 
 @router.post("/change_status/{todo_id}", tags=["Todo"])
 async def todo_change_status(request: Request,
