@@ -2,7 +2,7 @@ version: '3'
 
 services:
   db:
-    image: postgres
+    image: postgres:15
     container_name: db
     environment:
       - POSTGRES_USER=postgres
@@ -23,3 +23,4 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
     entrypoint: /bin/sh -c "pytest /application/tests/tests.py"
+    
