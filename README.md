@@ -71,21 +71,21 @@ sudo docker run --rm --network=host 2021-3-26-cha-generate [num]
 # Запуск с docker-compose
 ## Приложение в фоне
 ```bash
-sudo docker-compose -f compose.yml up -d --build
+sudo docker compose -f compose.yml up -d --build
 ```
 
 ## Приложение с выводом в консоль
 ```bash
-sudo docker-compose -f compose.yml up --build
+sudo docker compose -f compose.yml up --build
 ```
 
 ## Тесты
 ```bash
 sudo docker build -t 2021-3-26-cha .
-sudo docker-compose -f compose_tests.yml up --build
+sudo docker compose -f compose_tests.yml up --build
 ```
 
 ## Остановка
 ```bash
-sudo docker-compose down
+sudo docker compose down
 ```
