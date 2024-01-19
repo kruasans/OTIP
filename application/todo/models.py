@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, Boolean, Text, Date
 from datetime import date
+from pathlib import Path
 
 from application.database import Base
 
@@ -17,7 +18,7 @@ class Todo(Base):
     date_creation = Column(Date, default=date.today())
     date_completion = Column(Date, default=None)
     fullname = Column(Text, default="user")
-    image_path = Column(Text, default="Empty.png")
+    image_path = Column(Text, default= str(Path.cwd() / "application" / "static" / "media" / "Empty.png"))
     hash = Column(Text, default="")
 
     def __repr__(self):
