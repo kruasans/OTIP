@@ -40,7 +40,7 @@
                     {% endif %}
                 </div>
                 <input class="completed-btn {% if todo.completed %}completed{% endif %}" type="submit"
-                       name="completed" onclick="change_status({{ todo.id }})" value="Выполнить">
+                       name="completed" onclick="change_status({{ todo.id }})" value="{% if not todo.completed %}Выполнить{% else %}Выполнено{% endif %}">
                 <small>
                     <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
                         <input class="edit-btn" type="submit" value="Редактировать">
