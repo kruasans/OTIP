@@ -17,6 +17,7 @@ from matplotlib import pyplot as plt
 from wordcloud import WordCloud
 from PIL import Image
 import imagehash
+from pathlib import Path
 
 from application.database import get_db, Session
 import application.todo.models as models
@@ -54,7 +55,6 @@ async def list_todo(request: Request,
             skip = request.cookies.get('skip')
     elif not skip.isdigit():
         skip="0"
-    print(f"limit: {limit}")
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -125,14 +125,12 @@ async def todo_get(request: Request,
     if todo is None:
         logger.info(f"Getting not existing todo: {todo}")
         raise HTTPException(status_code=301)
-    image = todo.image_path
-    path = f"/application/static/media/{image}"
+    path = todo.image_path
     if not os.path.exists(path):
-        todo.image_path = "Empty.png"
-        image = "Empty.png"
+        todo.image_path = str(Path.cwd() / "application" / "static" / "media" / "Empty.png")
     logger.info(f"Getting todo: {todo}")
     return templates.TemplateResponse("edit.html",
-                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": image,
+                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": path,
                                        "image": True, "fullnames": Users})
 
 
@@ -477,13 +475,12 @@ def load_image(request: Request,
     hashes = database.query(models.Todo.hash).all()
     content = file_input.file.read()
     image = f"Image{todo.id}.png"
-    path = f"/application/static/media/{image}"
+    path = str(Path.cwd() / "application" / "static" / "media" / image)
     buffer = io.BytesIO(content)
 
     image_for_hash = Image.open(buffer)
     hash = str(imagehash.average_hash(image_for_hash))
     for loaded_hash in hashes:
-        print(f"loaded: {loaded_hash[0]}")
         if hash == loaded_hash[0]:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT)
 
@@ -492,7 +489,7 @@ def load_image(request: Request,
             f.write(buffer.getbuffer())
     except IsADirectoryError:
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-    todo.image_path = image
+    todo.image_path = path
     todo.hash = str(hash)
     database.commit()
     return {"answer": "ok"}

@@ -23,4 +23,3 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
     entrypoint: /bin/sh -c "pytest /application/tests/tests.py"
-    
