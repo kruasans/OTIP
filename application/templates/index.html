@@ -4,7 +4,7 @@
 
 <!--    <form action="/add" method="post" class="index_form">-->
         <textarea id="title_add" name="title" rows="2" placeholder="Введите название задачи"></textarea><br>
-        <textarea id="details_add"name="details" rows="5" placeholder="Введите задачу"></textarea>
+        <textarea id="details_add" name="details" rows="5" placeholder="Введите задачу"></textarea>
         <select name="type" id="type">
             {% for type in types %}
                 <option value="{{ type.value }}">{{ type.value }}</option>
