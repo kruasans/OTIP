@@ -1,40 +1,42 @@
 {% extends 'base.html' %}
 
 {% block content %}
-        <div class="task">
+    <div class="task">
         <h2>Заголовок задачи</h2>
-        </div>
-        <textarea id="title" name="title" rows="3">{{todo.title}}</textarea>
-        <textarea id="details" name="details" rows="5">{{todo.details}}</textarea>
-        <button type="submit" onclick="extend({{ todo_id }})" >Дополнить</button>
-        <br>
-        <br>
-        <label for="completed">Выполнено?</label>
-        <input id="completed" type="checkbox" name="completed" {% if todo.completed %}checked{% endif %}>
-        <select id="fullname" name="fullname">
-            {% for fullname in fullnames %}
-                <option value="{{fullname.value}}" {% if todo.fullname == fullname.value %} selected {% endif %}>
-                    {{fullname.value}}</option>
-            {% endfor %}
-        </select>
-        <div>
-        <span style="color:green;">Дата создания: {{todo.date_creation}}</span>
-        </div>
-        {% if todo.completed == True %}
-            <span style="color:green;">Дата выполнения: {{todo.date_completion}}</span>
-        {% endif %}
-        <button type="submit" onclick="edit({{ todo.id }})">Сохранить</button>
-    {% if image == True %}
+    </div>
+    <textarea id="title" name="title" rows="3">{{ todo.title }}</textarea>
+    <textarea id="details" name="details" rows="5">{{ todo.details }}</textarea>
+    <button type="submit" onclick="extend({{ todo_id }})">Дополнить</button>
     <br>
-    <img
-    style="width:100%;"
-    src="{{picture_name}}"
-    alt="Picture" />
+    <br>
+    <label for="completed">Выполнено?</label>
+    <input id="completed" type="checkbox" name="completed" {% if todo.completed %}checked{% endif %}>
+    <select id="fullname" name="fullname">
+        {% for fullname in fullnames %}
+            <option value="{{ fullname.value }}" {% if todo.fullname == fullname.value %} selected {% endif %}>
+                {{ fullname.value }}</option>
+        {% endfor %}
+    </select>
+    <div>
+        <span style="color:green;">Дата создания: {{ todo.date_creation }}</span>
+    </div>
+    {% if todo.completed == True %}
+        <span style="color:green;">Дата выполнения: {{ todo.date_completion }}</span>
     {% endif %}
-            <input placeholder="picture.png" type="file" id="file_input" name="file_input" accept=".png"
-                   style="margin-bottom: 10px">
-            <button type="submit" onclick="load_image({{ todo.id }})">Загрузить</button>
-<br>
+    <button type="submit" onclick="edit({{ todo.id }})">Сохранить</button>
+    {% if image == True %}
+        <br>
+        <img
+                style="width:100%;"
+                src="{{ picture_name }}"
+                alt="Picture"/>
+    {% endif %}
+    <input placeholder="picture.png" type="file" id="file_input" name="file_input" accept=".png"
+           style="margin-bottom: 10px">
+    <button type="submit" onclick="load_image({{ todo.id }})">Загрузить</button>
+    <br>
+    <button type="submit" onclick="generate_image({{ todo.id }})">Сгенерировать</button>
+    <br>
     <a href="/todo/list?type={{ todo.type }}">{{ todo.type }}</a>
 
 {% endblock content %}

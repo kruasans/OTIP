@@ -1,4 +1,4 @@
-function add_todo(){
+function add_todo() {
     formData = new FormData()
     formData.append("title", document.getElementById('title_add').value)
     formData.append("details", document.getElementById('details_add').value)
@@ -8,29 +8,28 @@ function add_todo(){
         method: "POST",
         body: formData,
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
-            if(response.status==401)
+            if (response.status == 401)
                 throw new Error(response.status);
             return response.json();
         })
         .then(data => {
-            if(data["answer"] == "title not found"){
+            if (data["answer"] == "title not found") {
                 console.log(data);
-            }
-            else if(data["answer"] == "ok"){
+            } else if (data["answer"] == "ok") {
                 window.location.href = "/todo/list";
             }
 
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/login/log_in";
-            }else{
+            } else {
                 alert("Ошибка");
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
@@ -38,17 +37,17 @@ function add_todo(){
         })
 }
 
-function change_status(todo_id){
+function change_status(todo_id) {
     var path = "/todo/change_status/" + todo_id
     fetch(path, {
         method: "POST",
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -56,27 +55,27 @@ function change_status(todo_id){
             location.reload();
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
             }
         })
 }
 
-function delete_entry(todo_id){
+function delete_entry(todo_id) {
     var path = "/todo/delete/" + todo_id;
     fetch(path, {
         method: "DELETE",
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -84,27 +83,27 @@ function delete_entry(todo_id){
             location.reload();
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
             }
         })
 }
 
-function delete_every_todo(){
+function delete_every_todo() {
     var path = "/todo/delete_all/";
     fetch(path, {
         method: "DELETE",
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -112,17 +111,17 @@ function delete_every_todo(){
             location.reload();
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
             }
         })
 }
 
-function upload(){
+function upload() {
     var path = "/todo/upload/";
     formData = new FormData();
     var file_input = document.getElementById('file_input');
@@ -132,13 +131,13 @@ function upload(){
         method: "POST",
         body: formData,
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -146,13 +145,13 @@ function upload(){
             window.location.href = "/todo/list";
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else if(error.message == "403"){
+            } else if (error.message == "403") {
                 alert("Файл неподходящего формата");
                 window.location.href = "/todo/list";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");
                 window.location.href = "/";
@@ -160,7 +159,7 @@ function upload(){
         })
 }
 
-function edit(todo_id){
+function edit(todo_id) {
     var path = "/todo/edit/" + todo_id;
     formData = new FormData();
     formData.append("title", document.getElementById('title').value);
@@ -171,13 +170,13 @@ function edit(todo_id){
         method: "POST",
         body: formData,
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -186,13 +185,13 @@ function edit(todo_id){
             window.location.href = "/todo/list";
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else if(error.message == "422"){
+            } else if (error.message == "422") {
                 alert("Неверный формат данных");
                 window.location.href = "/todo/list";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");
                 window.location.href = "/";
@@ -201,7 +200,7 @@ function edit(todo_id){
 }
 
 
-function load_image(todo_id){
+function load_image(todo_id) {
     var path = "/todo/load_image/" + todo_id;
     formData = new FormData();
     var file_input = document.getElementById('file_input');
@@ -211,13 +210,13 @@ function load_image(todo_id){
         method: "POST",
         body: formData,
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -225,29 +224,63 @@ function load_image(todo_id){
             location.reload();
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else if(error.message == "422"){
+            } else if (error.message == "422") {
                 alert("Неверный формат данных");
                 location.reload();
-            }else if(error.message == "415"){
+            } else if (error.message == "415") {
                 alert("Неверный формат картинки");
                 location.reload();
-            }else{
-                if(error.message == "409"){
+            } else {
+                if (error.message == "409") {
                     alert("Выбран дубликат");
                     location.reload();
-                }else{
-                console.error('Произошла ошибка:', error);
-                alert("Ошибка");
-                window.location.href = "/";
+                } else {
+                    console.error('Произошла ошибка:', error);
+                    alert("Ошибка");
+                    window.location.href = "/";
                 }
             }
         })
 }
 
-function import_gitlab(){
+function generate_image(todo_id) {
+    var path = "/todo/generate/" + todo_id;
+    fetch(path, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status != 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                alert("Ошибка авторизации");
+                window.location.href = "/login/log_in";
+            } else if (error.message == "422") {
+                alert("Неверный формат данных");
+                location.reload();
+            } else {
+                    console.error('Произошла ошибка:', error);
+                    alert("Ошибка");
+                    window.location.href = "/";
+            }
+
+        })
+}
+
+function import_gitlab() {
     var path = "/todo/import_issues/";
     formData = new FormData();
     formData.append("url", document.getElementById('url').value);
@@ -256,13 +289,13 @@ function import_gitlab(){
         method: "POST",
         body: formData,
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -270,19 +303,19 @@ function import_gitlab(){
             location.reload();
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else if(error.message == "422"){
+            } else if (error.message == "422") {
                 alert("Неверный формат данных");
                 location.reload();
-            }else if(error.message == "415"){
+            } else if (error.message == "415") {
                 alert("Неверный формат картинки");
                 location.reload();
-            }else if(error.message == "301"){
+            } else if (error.message == "301") {
                 alert("Ошибка авторизации по токену");
                 location.reload();
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");
                 window.location.href = "/";
@@ -290,7 +323,7 @@ function import_gitlab(){
         })
 }
 
-function generation(count){
+function generation(count) {
     var path = "/todo/generate/";
     formData = new FormData();
     formData.append("count", count);
@@ -298,13 +331,13 @@ function generation(count){
         method: "POST",
         body: formData,
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!==200)
+            if (response.status !== 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -312,16 +345,16 @@ function generation(count){
             window.location.href = "/todo/list";
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else if(error.message == "422"){
+            } else if (error.message == "422") {
                 alert("Неверный формат данных");
                 location.reload();
-            }else if(error.message == "409"){
+            } else if (error.message == "409") {
                 alert("Введено число больше 50");
                 window.location.href = "/todo/generator";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");
                 window.location.href = "/";
@@ -329,17 +362,17 @@ function generation(count){
         })
 }
 
-function delete_todo_in_range(start, end, type){
+function delete_todo_in_range(start, end, type) {
     var path = "/todo/delete_range?start=" + start + "&end=" + end + "&type=" + type;
     fetch(path, {
         method: "DELETE",
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -347,10 +380,10 @@ function delete_todo_in_range(start, end, type){
             window.location.href = "/todo/list?type=" + type;
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
             }
@@ -358,28 +391,28 @@ function delete_todo_in_range(start, end, type){
 }
 
 function extend(id) {
-    var path = "/todo/extend_detail/"+id;
+    var path = "/todo/extend_detail/" + id;
     fetch(path, {
         method: "POST",
         headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') }`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
         },
     })
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
         })
         .then(data => {
-            window.location.href = "/todo/edit/"+id;
+            window.location.href = "/todo/edit/" + id;
         })
         .catch(error => {
-            if(error.message == "401"){
+            if (error.message == "401") {
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
-            }else{
+            } else {
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");
                 window.location.href = "/";

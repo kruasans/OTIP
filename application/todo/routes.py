@@ -533,6 +533,38 @@ def load_image(request: Request,
     return {"answer": "ok"}
 
 
+@router.post("/generate/{todo_id}", tags=["Todo"])
+async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
+
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+
+    wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
+    if todo.details is not None and todo.details.replace(" ", "") != ""
+    else todo.title)
+    plt.axis("off")
+    plt.imshow(wc, interpolation="bilinear")
+
+
+    image = f"Image{todo.id}.png"
+    path = str(Path.cwd() / "application"/ "static" / "media" / image)
+    plt.savefig(path, format='png')
+    try:
+        with open(path, "rb") as file:
+            content = file.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    buffer = io.BytesIO(content)
+
+    image_for_hash = Image.open(buffer)
+    hash = str(imagehash.average_hash(image_for_hash))
+    todo.image_path = path
+    todo.hash = hash
+    database.commit()
+
+    return {"answer": "ok"}
+
+
 @router.post("/extend_detail/{todo_id}", tags=["Todo"])
 async def extend_detail(request: Request,
                         todo_id: int,
