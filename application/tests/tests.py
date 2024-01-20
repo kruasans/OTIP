@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pytest
 import math
@@ -29,6 +30,7 @@ TEST_DB_URL = os.environ["DATABASE_URL"]
 engine = create_engine(TEST_DB_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def override_get_db():
     db = TestingSessionLocal()
     try:
@@ -42,7 +44,7 @@ async def override_get_current_user():
 
 
 async def override_get_issues():
-    data=[]
+    data = []
     with open("/application/tests/data/issue.txt", "r", encoding='utf-8') as file:
         data.append(file.read())
     return data
@@ -59,6 +61,7 @@ client = TestClient(t_app)
 t_app.dependency_overrides[get_db] = override_get_db
 t_app.dependency_overrides[get_current_user] = override_get_current_user
 t_app.dependency_overrides[get_issues] = override_get_issues
+
 
 @t_app.get("/test/todos")
 async def get_todos(database: Session = Depends(get_db)):
@@ -102,7 +105,6 @@ async def t_list_todo(
         todos = database.query(todo_models.Todo).order_by(todo_models.Todo.id.desc()).offset(skip_todos).limit(limit)
     todos = [todo for todo in todos]
     return todos
-
 
 
 @pytest.mark.asyncio
@@ -194,7 +196,6 @@ class Test_class:
 
         assert count_after - count_before == differance
 
-
     # test ручки /add
     @staticmethod
     async def test_add_false():
@@ -246,7 +247,6 @@ class Test_class:
 
         expected = [todos[i] for i in range(len(todos) - 1, len(todos) - 6, -1)]
         assert result == expected
-        
 
     @staticmethod
     async def test_todo_list_with_type():
@@ -303,10 +303,10 @@ class Test_class:
 
     @staticmethod
     async def test_import_issues():
-        title="Visualaze delete all todo button"
-        details=""
-        completed=True
-        type=tags.TodoTags.education.value
+        title = "Visualaze delete all todo button"
+        details = ""
+        completed = True
+        type = tags.TodoTags.education.value
         source = tags.Source.source_exported.value
         fullname = tags.Users.user3.value
         response = client.post(
@@ -320,7 +320,8 @@ class Test_class:
         todos = response.json()
         result = False
         for todo in todos:
-            if todo["title"]==title and todo["details"]==details and todo["completed"] == completed and todo["type"]==type and todo["source"]==source and todo["fullname"]==fullname:
+            if todo["title"] == title and todo["details"] == details and todo["completed"] == completed and todo[
+                "type"] == type and todo["source"] == source and todo["fullname"] == fullname:
                 result = True
         assert result is True
         assert import_responce == {"answer": "ok"}
@@ -359,8 +360,8 @@ class Test_class:
         todos = response.json()
         result = False
         for todo in todos:
-            if todo["title"]=="Another text" and todo["completed"]==True and todo["image_path"]=="Empty.png":
+            if todo["title"] == "Another text" and todo["completed"] == True and todo["image_path"] == str(
+                    Path.cwd() / "application" / "static" / "media" / "Empty.png"):
                 result = True
         assert result == True
         assert response_edit.status_code == 200
-
