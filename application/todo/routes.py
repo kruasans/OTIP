@@ -133,9 +133,10 @@ async def todo_get(request: Request,
         todo.image_path = str(Path.cwd() / "application" / "static" / "media" / "Empty.png")
     logger.info(f"Getting todo: {todo}")
     other_todos_img = []
-    todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).all()
-    for to in todos:
-         other_todos_img.append(to.id)
+    if not todo.hash == "":
+        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).all()
+        for to in todos:
+             other_todos_img.append(to.id)
     print(other_todos_img)
     print(todo.image_path)
     print(todo.hash)
