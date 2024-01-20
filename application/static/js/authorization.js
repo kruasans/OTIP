@@ -304,7 +304,7 @@ function generation(count){
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if(response.status!==200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -318,6 +318,9 @@ function generation(count){
             }else if(error.message == "422"){
                 alert("Неверный формат данных");
                 location.reload();
+            }else if(error.message == "409"){
+                alert("Введено число больше 50");
+                window.location.href = "/todo/generator";
             }else{
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");

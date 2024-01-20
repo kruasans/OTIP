@@ -265,6 +265,9 @@ async def generate_todo(
               "оскопление", "прибивание"]
     types = ["Education", "Personal", "Plan"]
 
+    if count > 50:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="")
+
     for i in range(0, count):
         title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
         type = types[random.randint(0, 2)]
