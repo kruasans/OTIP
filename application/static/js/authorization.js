@@ -344,9 +344,6 @@ function delete_todo_in_range(start, end, type){
             return response.json();
         })
         .then(data => {
-            if(data["answer"] == "nan")
-                alert("nan")
-            alert(type)
             window.location.href = "/todo/list?type=" + type;
         })
         .catch(error => {
