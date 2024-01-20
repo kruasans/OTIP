@@ -129,9 +129,16 @@ async def todo_get(request: Request,
     if not os.path.exists(path):
         todo.image_path = str(Path.cwd() / "application" / "static" / "media" / "Empty.png")
     logger.info(f"Getting todo: {todo}")
+    other_todos_img = []
+    todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).all()
+    for to in todos:
+         other_todos_img.append(to.id)
+    print(other_todos_img)
+    print(todo.image_path)
+    print(todo.hash)
     return templates.TemplateResponse("edit.html",
                                       {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": path,
-                                       "image": True, "fullnames": Users})
+                                       "image": True, "fullnames": Users, "other_todos_img": other_todos_img})
 
 
 @router.post("/edit/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
@@ -320,7 +327,7 @@ async def upload(request: Request,
     df = pd.read_excel(buffer,
                        converters={'date_creation': pd.to_datetime,
                                    'date_completion': pd.to_datetime})
-    print("перед /add")
+
     count_str = len(df.title)
     for i in range(0, count_str):
         await todo_add(request=request,
@@ -449,6 +456,7 @@ def get_issues(url = Form(...),
     issues.reverse()
     return issues
 
+
 @router.post("/import_issues/", tags=["Gitlab"])
 async def import_issues(
         request: Request,
@@ -507,7 +515,7 @@ def load_image(request: Request,
     if file_input.filename.split(".")[-1] != 'png':
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    hashes = database.query(models.Todo.hash).all()
+    todos_hashes = database.query(models.Todo).all()
     content = file_input.file.read()
     image = f"Image{todo.id}.png"
     path = str(Path.cwd() / "application" / "static" / "media" / image)
@@ -515,9 +523,13 @@ def load_image(request: Request,
 
     image_for_hash = Image.open(buffer)
     hash = str(imagehash.average_hash(image_for_hash))
-    for loaded_hash in hashes:
-        if hash == loaded_hash[0]:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+    for loaded_hash in todos_hashes:
+        if loaded_hash.hash != "" and hash == loaded_hash.hash[0]:
+            print(path)
+            todo.image_path = loaded_hash.image_path
+            todo.hash = loaded_hash.hash
+            database.commit()
+            return {"answer": "ok, copied"}
 
     try:
         with open(path, "wb") as f:
@@ -528,3 +540,4 @@ def load_image(request: Request,
     todo.hash = str(hash)
     database.commit()
     return {"answer": "ok"}
+
