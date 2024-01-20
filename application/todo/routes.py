@@ -207,26 +207,27 @@ async def todo_delete_range(request: Request,
                             ):
 
     if start.isdigit() and end.isdigit():
-
         start, end = int(start), int(end)
+    else:
+        return {"answer": "nan"}
 
-        if start > end:
-            raise HTTPException(status_code=400)
-        query = database.query(models.Todo)
-        if type is None and TodoTags.contains(type):
-            query = query.filter(models.Todo.type == type)
+    if start > end:
+        raise HTTPException(status_code=400)
+    query = database.query(models.Todo)
+    if type is not None and TodoTags.contains(type):
+        query = query.filter(models.Todo.type == type)
+    count_todos = query.count()
+    if start <= 0 or end > count_todos:
+        raise HTTPException(status_code=400)
 
-        count_todos = query.count()
-        if start <= 0 or end > count_todos:
-            raise HTTPException(status_code=400)
+    # todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).all()
+    todos = query.order_by(models.Todo.id.desc()).offset(start - 1).limit(end - start + 1)
 
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type)
+    for todo in todos:
+        database.delete(todo)
 
-        for todo in todos:
-            database.delete(todo)
-
-        database.commit()
-        return {"answer": "ok"}
+    database.commit()
+    return {"answer": "ok"}
 
 
 @router.post("/change_status/{todo_id}", tags=["Todo"])

@@ -327,7 +327,7 @@ function generation(count){
 }
 
 function delete_todo_in_range(start, end, type){
-    var path = "/todo/delete_range?start=" + start + "&end=" + end;
+    var path = "/todo/delete_range?start=" + start + "&end=" + end + "&type=" + type;
     fetch(path, {
         method: "DELETE",
         headers: {
@@ -341,6 +341,9 @@ function delete_todo_in_range(start, end, type){
             return response.json();
         })
         .then(data => {
+            if(data["answer"] == "nan")
+                alert("nan")
+            alert(type)
             window.location.href = "/todo/list?type=" + type;
         })
         .catch(error => {
