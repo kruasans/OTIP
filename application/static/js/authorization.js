@@ -22,10 +22,11 @@ function add_todo() {
             } else if (data["answer"] == "ok") {
                 window.location.href = "/todo/list";
             }
-
         })
         .catch(error => {
             if (error.message == "401") {
+             localStorage.removeItem('token');
+             localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/login/log_in";
@@ -56,6 +57,8 @@ function change_status(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else {
@@ -84,6 +87,8 @@ function delete_entry(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else {
@@ -112,6 +117,8 @@ function delete_every_todo() {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else {
@@ -146,6 +153,8 @@ function upload() {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else if (error.message == "403") {
@@ -186,6 +195,8 @@ function edit(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else if (error.message == "422") {
@@ -225,6 +236,8 @@ function load_image(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else if (error.message == "422") {
@@ -266,6 +279,8 @@ function generate_image(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else if (error.message == "422") {
@@ -304,6 +319,8 @@ function import_gitlab() {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else if (error.message == "422") {
@@ -346,6 +363,8 @@ function generation(count) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else if (error.message == "422") {
@@ -381,6 +400,8 @@ function delete_todo_in_range(start, end, type) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else {
@@ -410,6 +431,8 @@ function extend(id) {
         })
         .catch(error => {
             if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 window.location.href = "/login/log_in";
             } else {
