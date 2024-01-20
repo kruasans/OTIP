@@ -16,6 +16,9 @@
             <input type="submit" form="list" value="Применить" class="submit_filter_todo">
             <input type="button" value="Удалить все" onclick="ask_and_submit_2()" class="delete-all-btn">
         </form>
+    <input id="start" type="text" placeholder="Удалить от" class="delete-range-start">
+    <input id="end" name="end" type="text" placeholder="Удалить до" class="delete-range-end">
+    <button type="submit" onclick="delete_todo_in_range(document.getElementById('start').value, document.getElementById('end').value,'{{ type }}')" class="delete-range-btn">Удалить в заданном диапазоне</button>
     </div>
 
     <div>

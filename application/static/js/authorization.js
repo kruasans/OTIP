@@ -304,7 +304,7 @@ function generation(count){
         .then(response => {
             console.log("response");
             console.log(response);
-            if(response.status!=200)
+            if(response.status!==200)
                 throw new Error(response.status);
             return response.json();
         })
@@ -318,6 +318,9 @@ function generation(count){
             }else if(error.message == "422"){
                 alert("Неверный формат данных");
                 location.reload();
+            }else if(error.message == "409"){
+                alert("Введено число больше 50");
+                window.location.href = "/todo/generator";
             }else{
                 console.error('Произошла ошибка:', error);
                 alert("Ошибка");
@@ -326,23 +329,22 @@ function generation(count){
         })
 }
 
-function extend(id) {
-    var path = "/todo/extend_detail/"+id;
+function delete_todo_in_range(start, end, type){
+    var path = "/todo/delete_range?start=" + start + "&end=" + end + "&type=" + type;
     fetch(path, {
-        method: "POST",
+        method: "DELETE",
         headers: {
             Authorization: `Bearer ${localStorage.getItem('token') }`
         },
     })
         .then(response => {
             console.log("response");
-            console.log(response);
             if(response.status!=200)
                 throw new Error(response.status);
             return response.json();
         })
         .then(data => {
-            window.location.href = "/todo/edit/"+id;
+            window.location.href = "/todo/list?type=" + type;
         })
         .catch(error => {
             if(error.message == "401"){
@@ -350,7 +352,6 @@ function extend(id) {
                 window.location.href = "/login/log_in";
             }else{
                 console.error('Произошла ошибка:', error);
-                alert("Ошибка");
                 window.location.href = "/";
             }
         })
