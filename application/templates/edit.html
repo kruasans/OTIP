@@ -6,7 +6,7 @@
         </div>
         <textarea id="title" name="title" rows="3">{{todo.title}}</textarea>
         <textarea id="details" name="details" rows="5">{{todo.details}}</textarea>
-        <button type="submit" >Дополнить</button>
+        <button type="submit" onclick="extend({{ todo_id }})" >Дополнить</button>
         <br>
         <br>
         <label for="completed">Выполнено?</label>
