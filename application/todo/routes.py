@@ -134,9 +134,9 @@ async def todo_get(request: Request,
     logger.info(f"Getting todo: {todo}")
     other_todos_img = []
     if not todo.hash == "":
-        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).all()
-        for to in todos:
-             other_todos_img.append(to.id)
+        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).filter(models.Todo.id != todo.id).all()
+        for todo_in in todos:
+            other_todos_img.append(todo_in.id)
     print(other_todos_img)
     print(todo.image_path)
     print(todo.hash)
