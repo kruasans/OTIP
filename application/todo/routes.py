@@ -18,8 +18,11 @@ from wordcloud import WordCloud
 from PIL import Image
 import imagehash
 from pathlib import Path
+import markovify
+from markovify.text import ParamError
 
 from application.database import get_db, Session
+import application.todo.data as data
 import application.todo.models as models
 import application.login.models as models_login
 from application.todo.tags import TodoTags, Users, Source, tags_metadata
@@ -540,4 +543,100 @@ def load_image(request: Request,
     todo.hash = str(hash)
     database.commit()
     return {"answer": "ok"}
+
+
+@router.post("/generate/{todo_id}", tags=["Todo"])
+async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
+
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+
+    wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
+    if todo.details is not None and todo.details.replace(" ", "") != ""
+    else todo.title)
+    plt.axis("off")
+    plt.imshow(wc, interpolation="bilinear")
+
+
+    image = f"Image{todo.id}.png"
+    path = str(Path.cwd() / "application"/ "static" / "media" / image)
+    plt.savefig(path, format='png')
+    try:
+        with open(path, "rb") as file:
+            content = file.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    buffer = io.BytesIO(content)
+
+    image_for_hash = Image.open(buffer)
+    hash = str(imagehash.average_hash(image_for_hash))
+    todo.image_path = path
+    todo.hash = hash
+    database.commit()
+
+    return {"answer": "ok"}
+
+
+@router.post("/extend_detail/{todo_id}", tags=["Todo"])
+async def extend_detail(request: Request,
+                        todo_id: int,
+                        database: Session = Depends(get_db),
+                        current_user: models_login.Users = Depends(get_current_user)
+):
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is None:
+        raise HTTPException(status_code=301)
+    symbols=[".",",",";",":","!","@","#","$","%","^","&","*","(",")","+","=","_","`","~","<",">","?","/","\"","\'","\\","|"]
+    if todo.details is None or len(todo.details)<=10:
+        with open("application/todo/data/corpus.txt", encoding='utf-8') as f:
+            text = f.read()
+        text_model = markovify.Text(text)
+        text_model.generate_corpus(text)
+        todo.details =  text_model.make_short_sentence(200)
+    elif len(todo.details)>10:
+        words=todo.details.split(" ")
+        last=words[-1]
+        if last == "" or last in symbols:
+            last=words[-2]
+            lent=len(last)
+            string = todo.details[0:(len(todo.details) - 2 - lent)]
+        else:
+            lent=len(last)
+            string = todo.details[0:(len(todo.details)-1-lent)]
+        if "." in last:
+            last=last.split(".")[0]
+        elif "!" in last:
+            last = last.split("!")[0]
+        elif "?" in last:
+            last = last.split("?")[0]
+        with open("application/todo/data/corpus.txt", encoding='utf-8') as f:
+            text = f.read()
+        text_model = markovify.Text(text)
+        text_model.generate_corpus(text)
+        count=0
+        while (count<10):
+            try:
+                gen = text_model.make_short_sentence(200)
+                strin = "\n" + last + " " + gen + "\n"
+                for i in range(20):
+                    new_text = text + strin
+                new_model = markovify.Text(new_text)
+                new_model.generate_corpus(new_text)
+                tex = new_model.make_sentence_with_start(last)
+                todo.details =string +" " + tex
+                break
+            except (ParamError,KeyError):
+                count+=1
+            if count==10:
+                text_model = markovify.Text(text)
+                text_model.generate_corpus(text)
+                todo.details = text_model.make_short_sentence(200)
+
+    if len(todo.details)>400:
+        detail=todo.details[0:399]
+        lenght=len(detail.split(" ")[-1])
+        todo.details=todo.details[0:(398-lenght)]
+
+    database.commit()
+    return {"answer":"ok"}
 

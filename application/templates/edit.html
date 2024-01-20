@@ -7,6 +7,7 @@
     <textarea id="title" name="title" rows="3">{{ todo.title }}</textarea>
     <textarea id="details" name="details" rows="5">{{ todo.details }}</textarea>
     <button type="submit">Дополнить</button>
+    <button type="submit" onclick="extend({{ todo_id }})">Дополнить</button>
     <br>
     <br>
     <label for="completed">Выполнено?</label>
@@ -38,6 +39,8 @@
     {% for other_id in other_todos_img %}
         <li><a href="/todo/edit/{{ other_id }}">{{ other_id }}</a></li>
     {% endfor %}
+    <button type="submit" onclick="generate_image({{ todo.id }})">Сгенерировать</button>
+    <br>
     <a href="/todo/list?type={{ todo.type }}">{{ todo.type }}</a>
 
 {% endblock content %}
