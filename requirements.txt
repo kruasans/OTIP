@@ -9,3 +9,9 @@ openpyxl==3.1.2
 xlrd==2.0.1
 matplotlib==3.8.2
 wordcloud==1.9.3
+python-gitlab==4.3.0
+python-jose==3.3.0
+passlib==1.7.4
+imagehash==4.3.1
+psycopg2_binary==2.9.9
+markovify==0.9.4

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <br>
+    <h2 style="margin-left: 40px">Задачи</h2>
+    <div>
+        <form action="/todo/list" method="get" id="list" >
+            <select name="type" id="type" form="list" class="filter_todo">
+                <option hidden="hidden">Фильтр</option>
+                {% for type in types %}
+                    <option value="{{ type.value }}">{{ type.value }}</option>
+                {% endfor %}
+                <option value="None">Показать все</option>
+            </select>
+            <input type="submit" form="list" value="Применить" class="submit_filter_todo">
+            <input type="button" value="Удалить все" onclick="ask_and_submit_2()" class="delete-all-btn">
+        </form>
+    <input id="start" type="text" placeholder="Удалить от" class="delete-range-start">
+    <input id="end" name="end" type="text" placeholder="Удалить до" class="delete-range-end">
+    <button type="submit" onclick="delete_todo_in_range(document.getElementById('start').value, document.getElementById('end').value,'{{ type }}')" class="delete-range-btn">Удалить в заданном диапазоне</button>
+    </div>
+
+    <div>
+        {% for todo in todos %}
+            <div class="title">
+                <div class="text-container">
+                    {% if todo.completed %}
+                        <strike>{{ todo.title }}</strike>
+                    {% else %}
+                        {{ todo.title }}
+                    {% endif %}
+                    <span style="color:green;">{{ todo.type }}</span>
+                    <br>
+                    <span>Источник: {{ todo.source }}</span>
+                    <br>
+                    <span style="color:green;">Дата создания: {{ todo.date_creation }}</span>
+                    <br>
+                    {% if todo.completed == True %}
+                        <span style="color:green;">Дата выполнения: {{ todo.date_completion }} </span>
+                        <br>
+                        <span style="color:green;">Выполнил: {{ todo.fullname }} </span>
+                    {% endif %}
+                </div>
+                <input class="completed-btn {% if todo.completed %}completed{% endif %}" type="submit"
+                       name="completed" onclick="change_status({{ todo.id }})" value="{% if not todo.completed %}Выполнить{% else %}Выполнено{% endif %}">
+                <small>
+                    <form style="display:inline;" class="form_inline" action="edit/{{ todo.id }}" method="get">
+                        <input class="edit-btn" type="submit" value="Редактировать">
+                    </form>
+                    <input class="delete-btn" type="button" value="Удалить"
+                           onclick="ask_and_submit(this, {{ todo.id }})">
+                </small>
+            </div>
+            <br>
+        {% endfor %}
+    </div>
+    <div>
+        {% if count_pages != 1 %}
+            {% for i in range(count_pages) %}
+                <a rel={{ i }} {% if i == skip %}style="color:green;"{% endif %}
+                   href="/todo/list?type={{ type }}&limit={{ limit }}&skip={{ i }}">{{ i }}</a>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+{% endblock content %}

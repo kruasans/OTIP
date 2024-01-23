@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div id="login-wrp">
+        <input type="text" id="username" placeholder="username"><br>
+        <input type="password" id="password" placeholder="password"><br><br>
+        <button id="login" onclick="login()">Login</button>
+    </div>
+
+    <div id="user-section" style="display: none;">
+        <button id="logout" onclick="logout()">Logout</button>
+    </div>
+<script src="{{ url_for('static', path='js/login.js') }}"></script>
+{% endblock content %}

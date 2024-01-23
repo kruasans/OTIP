@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:15
+    container_name: db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=todo_db
+    restart: always
+
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile_tests
+    ports:
+      - "80:80"
+    volumes:
+      - ./application:/application
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
+    entrypoint: /bin/sh -c "pytest /application/tests/tests.py"

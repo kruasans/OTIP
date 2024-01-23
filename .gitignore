@@ -1,4 +1,7 @@
 */__pycache__/
 */db.sqlite
 .idea/
-app/*.png
+application/*.png
+application/static/media/*.png
+application/*/__pycache__/
+application/tests/t_bd.sqlite

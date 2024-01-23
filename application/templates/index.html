@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!--    <form action="/add" method="post" class="index_form">-->
+        <textarea id="title_add" name="title" rows="2" placeholder="Введите название задачи"></textarea><br>
+        <textarea id="details_add" name="details" rows="5" placeholder="Введите задачу"></textarea>
+        <select name="type" id="type">
+            {% for type in types %}
+                <option value="{{ type.value }}">{{ type.value }}</option>
+            {% endfor %}
+        </select>
+        <select name="fullname" id="fullname">
+            {% for fullname in fullnames %}
+                <option value="{{ fullname.value }}">{{ fullname.value }}</option>
+            {% endfor %}
+        </select>
+        <button id="add_new_todo" onclick="add_todo()" type="submit">Добавить</button>
+<!--    </form>-->
+
+    <div class="index_form">
+        <span>Количество выполненных задач:</span>
+        <br>
+        <span>2021-3-26-cha: {{ cha }}</span>
+        <br>
+        <span>2021-3-04-zva: {{ zva }}</span>
+        <br>
+        <span>2021-3-12-pro: {{ pro }}</span>
+    </div>
+    <div class="index_form">
+        <span>Настройка количества выводимых задач</span>
+        <input type="number" size="5" min="1" max="10" id="lim">
+        <input type="button" value="Применить" onclick="limit(document.getElementById('lim').value)" class="generate">
+    </div>
+{% endblock content %}

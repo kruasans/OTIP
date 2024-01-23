@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <form action="/todo/export" method="get" class="export-form">
+        <button type="submit" class="button">Экспорт</button>
+    </form>
+
+    <div class="hr-divider"></div>
+    <div class="index_form">
+            <input placeholder="Export.xlsx" type="file" id="file_input" name="file_input" accept=".xlsx"
+                   style="margin-bottom: 10px">
+            <br>
+            <button onclick="upload()" type="submit">Импорт</button>
+    </div>
+{% endblock content %}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToDo App</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/footer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/list.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/pageFile.css') }}">
+    <link id="favicon" rel="icon" type="image/x-icon" href="/application/static/media/favicon.ico">
+</head>
+<body>
+<main>
+    <h1>ToDo App</h1>
+    <div id="welcome"></div>
+    <br>
+    {% block content %}
+
+    {% endblock content %}
+</main>
+<footer class="footer">
+    <ul class="hrefs_to_other_pages">
+        <li><a href="/">Домой</a></li>
+        <li><a href="/todo/list">Список</a></li>
+        <li><a href="/todo/pageFile">Работа с файлами</a></li>
+        <li><a href="/todo/visualization">Визуализация</a></li>
+        <li><a href="/todo/generator">Генерация</a></li>
+        <li><a href="/todo/import_issues">Импорт задач</a></li>
+        <li><a href="/todo/import_log/">Загрузки</a></li>
+        <li><a href="/login/log_in/">Авторизация</a></li>
+    </ul>
+</footer>
+</body>
+<script src="{{ url_for('static', path='js/functions.js') }}"></script>
+<script src="{{ url_for('static', path='js/authorization.js') }}"></script>
+</html>

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+ <div class="index_form" id="content">
+        <h3>Генерация задач</h3>
+        <input type="text" id="todo_count">
+        <input type="button" value="Сгенерировать" onclick="generation(document.getElementById('todo_count').value)"
+               class="generate">
+    </div>
+
+{% endblock content %}
