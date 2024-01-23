@@ -50,14 +50,14 @@ async def list_todo(request: Request,
         else:
             limit = request.cookies.get('limit')
     elif not limit.isdigit():
-        limit="5"
+        limit = "5"
     if skip is None:
         if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
             skip = "0"
         else:
             skip = request.cookies.get('skip')
     elif not skip.isdigit():
-        skip="0"
+        skip = "0"
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -134,7 +134,8 @@ async def todo_get(request: Request,
     logger.info(f"Getting todo: {todo}")
     other_todos_img = []
     if not todo.hash == "":
-        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).filter(models.Todo.id != todo.id).all()
+        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).filter(
+            models.Todo.id != todo.id).all()
         for todo_in in todos:
             other_todos_img.append(todo_in.id)
     print(other_todos_img)
@@ -206,6 +207,7 @@ async def todo_delete_all(request: Request,
                           database=database)
     return {"answer": "ok"}
 
+
 @router.delete("/delete_range", tags=["Todo"])
 async def todo_delete_range(request: Request,
                             start: str = "0",
@@ -214,7 +216,6 @@ async def todo_delete_range(request: Request,
                             database: Session = Depends(get_db),
                             current_user: models_login.Users = Depends(get_current_user),
                             ):
-
     if start.isdigit() and end.isdigit():
         start, end = int(start), int(end)
     else:
@@ -363,10 +364,10 @@ async def visualization(request: Request,
         else:
             limit = request.cookies.get('limit')
             skip = request.cookies.get('skip_visualization')
-    elif not limit.isdigit() or int(limit)==0:
-        limit="5"
+    elif not limit.isdigit() or int(limit) == 0:
+        limit = "5"
     if not skip.isdigit():
-        skip="0"
+        skip = "0"
     limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -443,8 +444,8 @@ async def issue_page(request: Request):
     return templates.TemplateResponse("import_issues.html", {"request": request})
 
 
-def get_issues(url = Form(...),
-               token = Form(...)):
+def get_issues(url=Form(...),
+               token=Form(...)):
     try:
         if "http" not in url:
             raise Exception
@@ -548,7 +549,6 @@ def load_image(request: Request,
 
 @router.post("/generate/{todo_id}", tags=["Todo"])
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
-
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
@@ -557,9 +557,8 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
     plt.axis("off")
     plt.imshow(wc, interpolation="bilinear")
 
-
     image = f"Image{todo.id}.png"
-    path = str(Path.cwd() / "application"/ "static" / "media" / image)
+    path = str(Path.cwd() / "application" / "static" / "media" / image)
     plt.savefig(path, format='png')
     try:
         with open(path, "rb") as file:
@@ -583,29 +582,30 @@ async def extend_detail(request: Request,
                         todo_id: int,
                         database: Session = Depends(get_db),
                         current_user: models_login.Users = Depends(get_current_user)
-):
+                        ):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
-    symbols=[".",",",";",":","!","@","#","$","%","^","&","*","(",")","+","=","_","`","~","<",">","?","/","\"","\'","\\","|"]
-    if todo.details is None or len(todo.details)<=10:
+    symbols = [".", ",", ";", ":", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "_", "`", "~", "<", ">",
+               "?", "/", "\"", "\'", "\\", "|"]
+    if todo.details is None or len(todo.details) <= 10:
         with open("application/todo/data/corpus.txt", encoding='utf-8') as f:
             text = f.read()
         text_model = markovify.Text(text)
         text_model.generate_corpus(text)
-        todo.details =  text_model.make_short_sentence(200)
-    elif len(todo.details)>10:
-        words=todo.details.split(" ")
-        last=words[-1]
+        todo.details = text_model.make_short_sentence(200)
+    elif len(todo.details) > 10:
+        words = todo.details.split(" ")
+        last = words[-1]
         if last == "" or last in symbols:
-            last=words[-2]
-            lent=len(last)
+            last = words[-2]
+            lent = len(last)
             string = todo.details[0:(len(todo.details) - 2 - lent)]
         else:
-            lent=len(last)
-            string = todo.details[0:(len(todo.details)-1-lent)]
+            lent = len(last)
+            string = todo.details[0:(len(todo.details) - 1 - lent)]
         if "." in last:
-            last=last.split(".")[0]
+            last = last.split(".")[0]
         elif "!" in last:
             last = last.split("!")[0]
         elif "?" in last:
@@ -614,8 +614,8 @@ async def extend_detail(request: Request,
             text = f.read()
         text_model = markovify.Text(text)
         text_model.generate_corpus(text)
-        count=0
-        while (count<10):
+        count = 0
+        while (count < 10):
             try:
                 gen = text_model.make_short_sentence(200)
                 strin = "\n" + last + " " + gen + "\n"
@@ -624,20 +624,50 @@ async def extend_detail(request: Request,
                 new_model = markovify.Text(new_text)
                 new_model.generate_corpus(new_text)
                 tex = new_model.make_sentence_with_start(last)
-                todo.details =string +" " + tex
+                todo.details = string + " " + tex
                 break
-            except (ParamError,KeyError):
-                count+=1
-            if count==10:
+            except (ParamError, KeyError):
+                count += 1
+            if count == 10:
                 text_model = markovify.Text(text)
                 text_model.generate_corpus(text)
                 todo.details = text_model.make_short_sentence(200)
 
-    if len(todo.details)>400:
-        detail=todo.details[0:399]
-        lenght=len(detail.split(" ")[-1])
-        todo.details=todo.details[0:(398-lenght)]
+    if len(todo.details) > 400:
+        detail = todo.details[0:399]
+        lenght = len(detail.split(" ")[-1])
+        todo.details = todo.details[0:(398 - lenght)]
 
     database.commit()
-    return {"answer":"ok"}
+    return {"answer": "ok"}
 
+
+@router.post("/luck", tags=["Todo"])
+async def wish_luck(request: Request,
+                    database: Session = Depends(get_db),
+                    current_user: models_login.Users = Depends(get_current_user)
+                    ):
+    luck = random.randint(1, 2)
+    rand = random.randint(1, 5)
+    # Удача
+    if luck == 1:
+        await generate_todo(
+            request=request,
+            database=database,
+            count=rand,
+        )
+        return {"answer": "lucky"}
+    # Неудача
+    else:
+        todos = database.query(models.Todo).all()
+        todos_count = database.query(models.Todo).count()
+        if rand > todos_count:
+            return {"answer": "unlucky"}
+        count = 0
+        for todo in todos:
+            if count == rand:
+                return {"answer": "unlucky"}
+            await todo_delete(request=request,
+                              todo_id=todo.id,
+                              database=database)
+            count += 1
