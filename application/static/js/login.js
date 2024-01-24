@@ -25,6 +25,7 @@ currentUser()
 function logout(){
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    document.cookie="user="+  "None" + ";path=/";
 
     loginWrp.style.display = 'block';
     userSection.style.display = 'none';
@@ -49,6 +50,8 @@ function login(){
             console.log(data)
             localStorage.setItem('token', data.access_token)
             localStorage.setItem('username', data.username)
+            console.log(data.username)
+            document.cookie="user="+  data.username + ";path=/";
 
             currentUser()
         })

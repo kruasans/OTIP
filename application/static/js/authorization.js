@@ -476,3 +476,35 @@ function luck(){
             }
         })
 }
+
+function vis(id){
+    var path = "/visualize/"+id;
+    fetch(path, {
+    method: "GET",
+    headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+    },
+    })
+    .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status !== 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/";
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                alert("Ошибка авторизации");
+                window.location.href = "/login/log_in";
+            } else {
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
