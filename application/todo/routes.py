@@ -419,14 +419,17 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
     else todo.title)
     plt.axis("off")
     plt.imshow(wc, interpolation="bilinear")
+    path = str(Path.cwd() /"application"/"static"/"media"/f"visualization{todo_id}.png")
+    plt.savefig(path, format="png")
+    return templates.TemplateResponse("visualisation_pic.html", {"request": request, "picture_name": path})
 
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
+    # buffer = io.BytesIO()
+    # plt.savefig(buffer, format='png')
+    # buffer.seek(0)
 
-    return Response(content=buffer.getvalue(),
-                    media_type="image/png",
-                    headers={"Content-Disposition": f"attachment; filename=Visualization{todo.id}.png"})
+    # return Response(content=buffer.getvalue(),
+    #                 media_type="image/png",
+    #                 headers={"Content-Disposition": f"attachment; filename=Visualization{todo.id}.png"})
 
 
 @router.get("/pageFile", tags=["Files"])
