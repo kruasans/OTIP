@@ -23,6 +23,8 @@ router = APIRouter(
 async def log_in(request: Request, database: Session = Depends(get_db)):
     if database.query(models.Users).filter(models.Users.name == "user").first() is None:
         await create_user(schems.UserCreate(username="user", password="user"), database)
+    if database.query(models.Users).filter(models.Users.name == "user2").first() is None:
+        await create_user(schems.UserCreate(username="user", password="user2"), database)
     return templates.TemplateResponse("log_in.html", {"request": request})
 
 

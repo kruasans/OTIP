@@ -20,6 +20,7 @@ class Todo(Base):
     fullname = Column(Text, default="user")
     image_path = Column(Text, default= str(Path.cwd() / "application" / "static" / "media" / "Empty.png"))
     hash = Column(Text, default="")
+    user = Column(Text)
 
     def __repr__(self):
         return f'<Todo {self.id}>'

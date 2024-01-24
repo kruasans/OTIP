@@ -44,6 +44,7 @@ async def list_todo(request: Request,
                     type: str = None,
                     limit: str = None,
                     skip: str = None):
+    user=request.cookies.get("user")
     if limit is None:
         if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
@@ -60,19 +61,19 @@ async def list_todo(request: Request,
         skip = "0"
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
-    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
-        type) else database.query(models.Todo).filter(
+    count_todos = database.query(models.Todo).filter(models.Todo.user==user).count() if type is None or not TodoTags.contains(
+        type) else database.query(models.Todo).filter(models.Todo.user==user).filter(
         models.Todo.type == type).count()
     count_pages = math.ceil(count_todos / limit)
 
     skip_todos = limit * skip
     if skip >= count_pages:
         skip_todos = skip = 0
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+    todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
         skip_todos).limit(limit)
 
     if type is None or not TodoTags.contains(type):
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
+        todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
                                                    {
                                                        "request": request,
@@ -109,7 +110,8 @@ async def todo_add(request: Request,
                            fullname=fullname,
                            completed=completed,
                            date_creation=date_creation,
-                           date_completion=date_completion)
+                           date_completion=date_completion,
+                           user=current_user.name)
 
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
@@ -121,9 +123,11 @@ async def todo_add(request: Request,
 @router.get("/edit/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
 async def todo_get(request: Request,
                    todo_id: int,
-                   database: Session = Depends(get_db)):
+                   database: Session = Depends(get_db),
+                  ):
     """Get todo
     """
+
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         logger.info(f"Getting not existing todo: {todo}")
@@ -185,7 +189,7 @@ async def todo_delete(request: Request,
                       ):
     """Delete todo
     """
-    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    todo = database.query(models.Todo).filter(models.Todo.user==current_user.name).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
     logger.info(f"Deleting todo: {todo}")
@@ -200,11 +204,12 @@ async def todo_delete_all(request: Request,
                           current_user: models_login.Users = Depends(get_current_user)
                           ):
     """Delete all todos"""
-    all_todos = database.query(models.Todo).all()
+    all_todos = database.query(models.Todo).filter(models.Todo.user==current_user.name).all()
     for todo in all_todos:
         await todo_delete(request=request,
                           todo_id=todo.id,
-                          database=database)
+                          database=database,
+                          current_user=current_user)
     return {"answer": "ok"}
 
 
@@ -223,7 +228,7 @@ async def todo_delete_range(request: Request,
 
     if start > end:
         raise HTTPException(status_code=400)
-    query = database.query(models.Todo)
+    query = database.query(models.Todo).filter(models.Todo.user==current_user.name)
     if type is not None and TodoTags.contains(type):
         query = query.filter(models.Todo.type == type)
     count_todos = query.count()
@@ -248,7 +253,7 @@ async def todo_change_status(request: Request,
                              ):
     """Change todo status on home page
     """
-    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    todo = database.query(models.Todo).filter(models.Todo.user==current_user.name).filter(models.Todo.id == todo_id).first()
     if todo is not None:
         if todo.completed is True:
             todo.completed = False
@@ -293,9 +298,11 @@ async def generate_todo(
 
 
 @router.get("/export", tags=["Files"])
-async def export(request: Request, database: Session = Depends(get_db)):
+async def export(request: Request, database: Session = Depends(get_db)
+                 ):
+    user=request.cookies.get("user")
     logger.info("Exporting")
-    todos = database.query(models.Todo)
+    todos = database.query(models.Todo).filter(models.Todo.user==user)
     lst = []
     for todo in todos:
         lst.append({
@@ -356,7 +363,9 @@ async def upload(request: Request,
 async def visualization(request: Request,
                         database: Session = Depends(get_db),
                         limit: str = None,
-                        skip: str = None):
+                        skip: str = None
+                        ):
+    user=request.cookies.get("user")
     if limit is None:
         if request.cookies.get('limit') is None or request.cookies.get('skip_visualization') is None:
             limit = "5"
@@ -370,18 +379,18 @@ async def visualization(request: Request,
         skip = "0"
     limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
-    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
-        type) else database.query(models.Todo).filter(
+    count_todos = database.query(models.Todo).filter(models.Todo.user==user).count() if type is None or not TodoTags.contains(
+        type) else database.query(models.Todo).filter(models.Todo.user==user).filter(
         models.Todo.type == type).count()
     count_pages = math.ceil(count_todos / limit)
 
     skip_todos = limit * skip
     if skip > count_pages:
         skip_todos = 0
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+    todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
         skip_todos).limit(limit)
     if type is None or not TodoTags.contains(type):
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
+        todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
                                                                           "limit": limit, "skip": skip,
                                                                           "count_pages": count_pages,
@@ -390,29 +399,31 @@ async def visualization(request: Request,
     template_response.set_cookie("skip_visualization", value=str(skip))
     return template_response
 
-    count_todos = database.query(models.Todo).count()
+    count_todos = database.query(models.Todo).filter(models.Todo.user==user).count()
     count_pages = int(count_todos / limit)
     if count_todos < 10:
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc())
+        todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc())
         return templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
                                                                  "limit": limit, "skip": skip,
                                                                  "count_pages": 0, "types": TodoTags})
     if count_pages * limit != count_todos:
         count_pages += 1
     if skip > count_pages:
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(0).limit(limit)
+        todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc()).offset(0).limit(limit)
         return templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
                                                                  "limit": limit, "skip": skip,
                                                                  "count_pages": count_pages, "types": TodoTags})
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(limit * skip).limit(limit)
+    todos = database.query(models.Todo).filter(models.Todo.user==user).order_by(models.Todo.id.desc()).offset(limit * skip).limit(limit)
     return templates.TemplateResponse("visualization.html", {"request": request, "todos": todos,
                                                              "limit": limit, "skip": skip,
                                                              "count_pages": count_pages, "types": TodoTags})
 
 
 @router.get("/visualize/{todo_id}", tags=["Files"])
-async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
-    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+async def vis(request: Request, todo_id: int, database: Session = Depends(get_db),
+              ):
+    user=request.cookies.get("user")
+    todo = database.query(models.Todo).filter(models.Todo.user==user).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
     if todo.details is not None and todo.details.replace(" ", "") != ""
@@ -519,8 +530,8 @@ def load_image(request: Request,
     print("in func")
     if file_input.filename.split(".")[-1] != 'png':
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
-    todos_hashes = database.query(models.Todo).all()
+    todo = database.query(models.Todo).filter(models.Todo.user==current_user.name).filter(models.Todo.id == todo_id).first()
+    todos_hashes = database.query(models.Todo).filter(models.Todo.user==current_user.name).all()
     content = file_input.file.read()
     image = f"Image{todo.id}.png"
     path = str(Path.cwd() / "application" / "static" / "media" / image)
@@ -548,8 +559,9 @@ def load_image(request: Request,
 
 
 @router.post("/generate/{todo_id}", tags=["Todo"])
-async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
-    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+async def vis(request: Request, todo_id: int, database: Session = Depends(get_db),
+              current_user: models_login.Users = Depends(get_current_user)):
+    todo = database.query(models.Todo).filter(models.Todo.user==current_user.name).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
     if todo.details is not None and todo.details.replace(" ", "") != ""
@@ -583,7 +595,7 @@ async def extend_detail(request: Request,
                         database: Session = Depends(get_db),
                         current_user: models_login.Users = Depends(get_current_user)
                         ):
-    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    todo = database.query(models.Todo).filter(models.Todo.user==current_user.name).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
     symbols = [".", ",", ";", ":", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "_", "`", "~", "<", ">",
@@ -655,12 +667,13 @@ async def wish_luck(request: Request,
             request=request,
             database=database,
             count=rand,
+            current_user=current_user
         )
         return {"answer": "lucky"}
     # Неудача
     else:
-        todos = database.query(models.Todo).all()
-        todos_count = database.query(models.Todo).count()
+        todos = database.query(models.Todo).filter(models.Todo.user==current_user.name).all()
+        todos_count = database.query(models.Todo).filter(models.Todo.user==current_user.name).count()
         if rand > todos_count:
             return {"answer": "unlucky"}
         count = 0
@@ -669,5 +682,6 @@ async def wish_luck(request: Request,
                 return {"answer": "unlucky"}
             await todo_delete(request=request,
                               todo_id=todo.id,
-                              database=database)
+                              database=database,
+                              current_user=current_user)
             count += 1
