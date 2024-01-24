@@ -240,6 +240,28 @@ async def todo_delete_range(request: Request,
     return {"answer": "ok"}
 
 
+@router.delete("/delete_even", tags=["Todo"])
+async def delete_even(request: Request,
+                     type: str = None,
+                     database: Session = Depends(get_db),
+                     current_user: models_login.Users = Depends(get_current_user)):
+    if request.cookies.get('limit') is None or request.cookies.get('skip') is None:
+        raise HTTPException(status_code=status.HTTP_424_FAILED_DEPENDENCY)
+    skip_todos = int(request.cookies.get('limit')) * int(request.cookies.get('skip'))
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+        skip_todos).limit(request.cookies.get('limit'))
+    if type is None or not TodoTags.contains(type):
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(
+        skip_todos).limit(request.cookies.get('limit'))
+    for todo in todos:
+        if todo.id % 2 == 0:
+            await todo_delete(request=request,
+                              todo_id=todo.id,
+                              database=database)
+    return {"answer": "ok"}
+
+
+
 @router.post("/change_status/{todo_id}", tags=["Todo"])
 async def todo_change_status(request: Request,
                              todo_id: int,
