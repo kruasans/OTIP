@@ -19,6 +19,7 @@
     <input id="start" type="text" placeholder="Удалить от" class="delete-range-start">
     <input id="end" name="end" type="text" placeholder="Удалить до" class="delete-range-end">
     <button type="submit" onclick="delete_todo_in_range(document.getElementById('start').value, document.getElementById('end').value,'{{ type }}')" class="delete-range-btn">Удалить в заданном диапазоне</button>
+    <button type="submit" onclick="delete_todo_even('{{ type }}')" class="delete-even">Удалить четные</button>
     </div>
 
     <div>
