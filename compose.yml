@@ -25,6 +25,38 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
     entrypoint: /bin/sh -c "/application/script/wait-for-it.sh db:5432 -- uvicorn application.main:app --host 0.0.0.0 --port 80 --workers 4"
+  
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: elasticsearchhh
+    volumes:
+      - ./elastic_data_storage:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.enabled=false
+      - ELASTIC_PASSWORD=password
+    user: "1000:1000"
+    networks:
+      - docker-elk
+    ports:
+      - 9200:9200
+
+  kibana:
+    image: kibana:8.12.0
+    container_name: kibanaa
+    environment:
+      - "ELASTICSEARCH_URL=http://elasticsearch:9200"
+    networks:
+      - docker-elk
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+
+networks:
+  docker-elk:
+    driver: bridge
 
 
 volumes:

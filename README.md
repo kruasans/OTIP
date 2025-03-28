@@ -71,11 +71,15 @@ sudo docker run --rm --network=host 2021-3-26-cha-generate [num]
 # Запуск с docker-compose
 ## Приложение в фоне
 ```bash
+mkdir -p ./elastic_data_storage
+sudo chown -R 1000:1000 ./elastic_data_storage
 sudo docker compose -f compose.yml up -d --build
 ```
 
 ## Приложение с выводом в консоль
 ```bash
+mkdir -p ./elastic_data_storage
+sudo chown -R 1000:1000 ./elastic_data_storage
 sudo docker compose -f compose.yml up --build
 ```
 
