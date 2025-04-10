@@ -20,6 +20,7 @@ import imagehash
 from pathlib import Path
 import markovify
 from markovify.text import ParamError
+from elasticsearch import Elasticsearch
 
 from application.database import get_db, Session
 import application.todo.data as data
@@ -36,6 +37,34 @@ router = APIRouter(
     prefix='/todo',
     tags=['Todo'],
 )
+
+
+es = Elasticsearch(["http://elasticsearch:9200"])
+index_name="todos"
+mapping = {
+    "mappings": {
+        "properties": {
+            "name": {"type": "text"},
+            "tag": {"type": "keyword"},
+            "date_creation": {"type": "date"}
+        }
+    }
+}
+if not es.indices.exists(index=index_name):
+    es.indices.create(index=index_name, body=mapping)
+
+
+def indexating_todo(name,tag,date_creation):
+    document = {
+        "name": name,
+        "tag": tag,
+        "creation_date": date_creation,
+    }
+    response = es.index(
+        index=index_name,
+        body=document
+    )
+    return response
 
 
 @router.get("/list", tags=["Lists"])
@@ -101,7 +130,7 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
-    if title is not None and title.replace(" ", "") != "" or title == "":
+    if title is not None:
         todo = models.Todo(title=title,
                            details=details,
                            type=type,
@@ -114,7 +143,9 @@ async def todo_add(request: Request,
         logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
+        rep = indexating_todo(name=str(title),tag=type,date_creation=date_creation)
         return {"answer": "ok"}
+    # rep = indexating_todo(text=title,tag=type,date_creation=date_creation)
     return {"answer": "title not found"}
 
 
