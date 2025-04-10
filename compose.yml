@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   db:
     image: postgres:15
@@ -17,6 +15,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    x-develop:
+      watch:
+        - path: ./application
+          action: sync
+          target: /application
     ports:
       - "80:80"
     volumes:
