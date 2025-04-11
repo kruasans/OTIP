@@ -70,6 +70,16 @@ def indexating_todo(id,text,name,tag,date_creation):
     )
     return response
 
+def editing_todo(id,name, text):
+    updated_data  = {
+        "doc":{
+            "name": name,
+            "text": text
+        }
+    }
+    response = es.update(index=index_name, id=id, body=updated_data)
+    return response
+
 
 @router.get("/list", tags=["Lists"])
 async def list_todo(request: Request,
@@ -205,6 +215,7 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
+        editing_todo(id=todo_id, name=str(title), text=details)
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
