@@ -20,6 +20,7 @@ import imagehash
 from pathlib import Path
 import markovify
 from markovify.text import ParamError
+from elasticsearch import Elasticsearch
 
 from application.database import get_db, Session
 import application.todo.data as data
@@ -38,12 +39,146 @@ router = APIRouter(
 )
 
 
+es = Elasticsearch(["http://elasticsearch:9200"])
+index_name="todos"
+index_body = {
+    "settings": {
+        "index": {
+            "max_ngram_diff": 7
+        },
+        "analysis": {
+            "analyzer": {
+                "substring_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "ngram_tokenizer",
+                    "filter": ["lowercase"]
+                }
+            },
+            "tokenizer": {
+                "ngram_tokenizer": {
+                    "type": "ngram",
+                    "min_gram": 3,
+                    "max_gram": 10,
+                    "token_chars": ["letter", "digit"]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "name": {"type": "text","analyzer": "substring_analyzer","search_analyzer": "standard"},
+            "text": {"type": "text","analyzer": "substring_analyzer","search_analyzer": "standard"},
+            "tag": {"type": "keyword"},
+            "date_creation": {"type": "date"},
+        }
+    }
+}
+mapping = {
+    "mappings": {
+        "properties": {
+            "name": {"type": "text"},
+            "text": {"type": "text"},
+            "tag": {"type": "keyword"},
+            "date_creation": {"type": "date"},
+        }
+    }
+}
+if not es.indices.exists(index=index_name):
+    es.indices.create(index=index_name, body=index_body)
+
+
+def indexating_todo(id,text,name,tag,date_creation):
+    document = {
+        "name": name,
+        "text": text,
+        "tag": tag,
+        "creation_date": date_creation,
+        
+    }
+    response = es.index(
+        index=index_name,
+        id=id,
+        body=document
+    )
+    return response
+
+def editing_todo(id,name, text):
+    updated_data  = {
+        "doc":{
+            "name": name,
+            "text": text
+        }
+    }
+    response = es.update(index=index_name, id=id, body=updated_data)
+    return response
+
+def deleting_todo(id: int) -> Response:
+    if not es.exists(index=index_name, id=id):
+        return False, f"Документ с ID {id} не существует"    
+    return es.delete(index=index_name, id=id)
+
+
+def find_ids_by_tag(tag):
+    query = {
+        "query":{
+            "match":{
+                "tag": str(tag)
+            }
+         }
+    }
+    response = es.search(index=index_name, body=query)
+    l=[]
+    for hit in response['hits']['hits']:
+        l.append(hit['_id'])
+    return l
+    
+def find_by_date(date):
+    l=[]
+    try:
+        dt_object = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        query = {
+            "query": {
+                "range": {
+                    "creation_date": {
+                        "gte": dt_object
+                    }
+                }
+            }
+        }
+        response = es.search(index=index_name, body=query)
+        for hit in response['hits']['hits']:
+            l.append(hit['_id'])
+        return l
+    except ValueError:
+       return []
+
+def find_by_text(text):
+    l=[]
+    query={
+            "query": {
+                "multi_match": {
+                    "query": text,
+                    "fields": ["name", "text"]
+                }
+            }
+        }
+    response = es.search(index=index_name,body=query)
+    for hit in response['hits']['hits']:
+        l.append(hit['_id'])
+    return l
+               
+        
+                
+
+
 @router.get("/list", tags=["Lists"])
 async def list_todo(request: Request,
                     database: Session = Depends(get_db),
                     type: str = None,
                     limit: str = None,
-                    skip: str = None):
+                    skip: str = None,
+                    date: str = None,
+                    text: str = None):
     if limit is None:
         if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
@@ -68,10 +203,19 @@ async def list_todo(request: Request,
     skip_todos = limit * skip
     if skip >= count_pages:
         skip_todos = skip = 0
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+    ids=find_ids_by_tag(type)
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
         skip_todos).limit(limit)
-
-    if type is None or not TodoTags.contains(type):
+    if (date is not None or date =='') and not TodoTags.contains(type) and (text is not None or text ==''):
+        ids = find_by_date(date)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
+            skip_todos).limit(limit)
+    if (text is not None or text =='') and not TodoTags.contains(type) and (date is None or date==''):
+        ids = find_by_text(text)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
+            skip_todos).limit(limit)        
+    if (type is None or not TodoTags.contains(type)) and (date is None or date=='') and (text is None or text ==''):
+        logger.info("hui blyat")
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
                                                    {
@@ -101,7 +245,7 @@ async def todo_add(request: Request,
                    ):
     """Add new todo
     """
-    if title is not None and title.replace(" ", "") != "" or title == "":
+    if title is not None:
         todo = models.Todo(title=title,
                            details=details,
                            type=type,
@@ -110,10 +254,10 @@ async def todo_add(request: Request,
                            completed=completed,
                            date_creation=date_creation,
                            date_completion=date_completion)
-
-        logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
+        logger.info(f"Creating todo: {todo}")
+        indexating_todo(id=todo.id,name=str(title),text=details,tag=type,date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
 
@@ -172,6 +316,7 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
+        editing_todo(id=todo_id, name=str(title), text=details)
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
@@ -190,6 +335,7 @@ async def todo_delete(request: Request,
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
+    deleting_todo(todo_id)
     return {"answer": "ok"}
 
 
@@ -234,6 +380,7 @@ async def todo_delete_range(request: Request,
 
     for todo in todos:
         database.delete(todo)
+        deleting_todo(todo.id)
 
     database.commit()
     return {"answer": "ok"}

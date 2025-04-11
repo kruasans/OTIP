@@ -15,6 +15,14 @@
             </select>
             <input type="submit" form="list" value="Применить" class="submit_filter_todo">
             <input type="button" value="Удалить все" onclick="ask_and_submit_2()" class="delete-all-btn">
+            <div>
+            	<input id="date" name="date" form="list" type="text" placeholder="Дата (пример:2025-04-11)">
+            	<input type="submit" form="list" value="Поиск по дате" class="submit_filter_todo">
+            </div>
+            <div>
+            	<input id="text" name="text" form="list" type="text" placeholder="Введите строку">
+            	<input type="submit" form="list" value="Поиск по тексту" class="submit_filter_todo">
+            </div>
         </form>
     <input id="start" type="text" placeholder="Удалить от" class="delete-range-start">
     <input id="end" name="end" type="text" placeholder="Удалить до" class="delete-range-end">
