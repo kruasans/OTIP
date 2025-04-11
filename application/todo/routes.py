@@ -80,6 +80,9 @@ def editing_todo(id,name, text):
     response = es.update(index=index_name, id=id, body=updated_data)
     return response
 
+def deleting_todo(id: int) -> Response:
+    return es.delete(index=index_name, id=id)
+
 
 @router.get("/list", tags=["Lists"])
 async def list_todo(request: Request,
@@ -234,6 +237,7 @@ async def todo_delete(request: Request,
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
+    deleting_todo(todo_id)
     return {"answer": "ok"}
 
 
