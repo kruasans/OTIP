@@ -81,7 +81,12 @@ def editing_todo(id,name, text):
     return response
 
 def deleting_todo(id: int) -> Response:
+    if not es.exists(index=index_name, id=id):
+        return False, f"Документ с ID {id} не существует"    
     return es.delete(index=index_name, id=id)
+
+        
+                
 
 
 @router.get("/list", tags=["Lists"])
@@ -282,6 +287,7 @@ async def todo_delete_range(request: Request,
 
     for todo in todos:
         database.delete(todo)
+        deleting_todo(todo.id)
 
     database.commit()
     return {"answer": "ok"}
