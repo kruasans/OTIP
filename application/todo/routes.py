@@ -41,6 +41,38 @@ router = APIRouter(
 
 es = Elasticsearch(["http://elasticsearch:9200"])
 index_name="todos"
+index_body = {
+    "settings": {
+        "index": {
+            "max_ngram_diff": 7
+        },
+        "analysis": {
+            "analyzer": {
+                "substring_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "ngram_tokenizer",
+                    "filter": ["lowercase"]
+                }
+            },
+            "tokenizer": {
+                "ngram_tokenizer": {
+                    "type": "ngram",
+                    "min_gram": 3,
+                    "max_gram": 10,
+                    "token_chars": ["letter", "digit"]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "name": {"type": "text","analyzer": "substring_analyzer","search_analyzer": "standard"},
+            "text": {"type": "text","analyzer": "substring_analyzer","search_analyzer": "standard"},
+            "tag": {"type": "keyword"},
+            "date_creation": {"type": "date"},
+        }
+    }
+}
 mapping = {
     "mappings": {
         "properties": {
@@ -52,7 +84,7 @@ mapping = {
     }
 }
 if not es.indices.exists(index=index_name):
-    es.indices.create(index=index_name, body=mapping)
+    es.indices.create(index=index_name, body=index_body)
 
 
 def indexating_todo(id,text,name,tag,date_creation):
@@ -85,6 +117,56 @@ def deleting_todo(id: int) -> Response:
         return False, f"Документ с ID {id} не существует"    
     return es.delete(index=index_name, id=id)
 
+
+def find_ids_by_tag(tag):
+    query = {
+        "query":{
+            "match":{
+                "tag": str(tag)
+            }
+         }
+    }
+    response = es.search(index=index_name, body=query)
+    l=[]
+    for hit in response['hits']['hits']:
+        l.append(hit['_id'])
+    return l
+    
+def find_by_date(date):
+    l=[]
+    try:
+        dt_object = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        query = {
+            "query": {
+                "range": {
+                    "creation_date": {
+                        "gte": dt_object
+                    }
+                }
+            }
+        }
+        response = es.search(index=index_name, body=query)
+        for hit in response['hits']['hits']:
+            l.append(hit['_id'])
+        return l
+    except ValueError:
+       return []
+
+def find_by_text(text):
+    l=[]
+    query={
+            "query": {
+                "multi_match": {
+                    "query": text,
+                    "fields": ["name", "text"]
+                }
+            }
+        }
+    response = es.search(index=index_name,body=query)
+    for hit in response['hits']['hits']:
+        l.append(hit['_id'])
+    return l
+               
         
                 
 
@@ -94,7 +176,9 @@ async def list_todo(request: Request,
                     database: Session = Depends(get_db),
                     type: str = None,
                     limit: str = None,
-                    skip: str = None):
+                    skip: str = None,
+                    date: str = None,
+                    text: str = None):
     if limit is None:
         if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
@@ -119,10 +203,19 @@ async def list_todo(request: Request,
     skip_todos = limit * skip
     if skip >= count_pages:
         skip_todos = skip = 0
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).offset(
+    ids=find_ids_by_tag(type)
+    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
         skip_todos).limit(limit)
-
-    if type is None or not TodoTags.contains(type):
+    if (date is not None or date =='') and not TodoTags.contains(type) and (text is not None or text ==''):
+        ids = find_by_date(date)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
+            skip_todos).limit(limit)
+    if (text is not None or text =='') and not TodoTags.contains(type) and (date is None or date==''):
+        ids = find_by_text(text)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
+            skip_todos).limit(limit)        
+    if (type is None or not TodoTags.contains(type)) and (date is None or date=='') and (text is None or text ==''):
+        logger.info("hui blyat")
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
                                                    {
