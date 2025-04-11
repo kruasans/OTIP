@@ -45,8 +45,9 @@ mapping = {
     "mappings": {
         "properties": {
             "name": {"type": "text"},
+            "text": {"type": "text"},
             "tag": {"type": "keyword"},
-            "date_creation": {"type": "date"}
+            "date_creation": {"type": "date"},
         }
     }
 }
@@ -54,17 +55,38 @@ if not es.indices.exists(index=index_name):
     es.indices.create(index=index_name, body=mapping)
 
 
-def indexating_todo(name,tag,date_creation):
+def indexating_todo(id,text,name,tag,date_creation):
     document = {
         "name": name,
+        "text": text,
         "tag": tag,
         "creation_date": date_creation,
+        
     }
     response = es.index(
         index=index_name,
+        id=id,
         body=document
     )
     return response
+
+def editing_todo(id,name, text):
+    updated_data  = {
+        "doc":{
+            "name": name,
+            "text": text
+        }
+    }
+    response = es.update(index=index_name, id=id, body=updated_data)
+    return response
+
+def deleting_todo(id: int) -> Response:
+    if not es.exists(index=index_name, id=id):
+        return False, f"Документ с ID {id} не существует"    
+    return es.delete(index=index_name, id=id)
+
+        
+                
 
 
 @router.get("/list", tags=["Lists"])
@@ -139,13 +161,11 @@ async def todo_add(request: Request,
                            completed=completed,
                            date_creation=date_creation,
                            date_completion=date_completion)
-
-        logger.info(f"Creating todo: {todo}")
         database.add(todo)
         database.commit()
-        rep = indexating_todo(name=str(title),tag=type,date_creation=date_creation)
+        logger.info(f"Creating todo: {todo}")
+        indexating_todo(id=todo.id,name=str(title),text=details,tag=type,date_creation=date_creation)
         return {"answer": "ok"}
-    # rep = indexating_todo(text=title,tag=type,date_creation=date_creation)
     return {"answer": "title not found"}
 
 
@@ -203,6 +223,7 @@ async def todo_edit(
         else:
             todo.date_completion = date.today()
         database.commit()
+        editing_todo(id=todo_id, name=str(title), text=details)
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
@@ -221,6 +242,7 @@ async def todo_delete(request: Request,
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
+    deleting_todo(todo_id)
     return {"answer": "ok"}
 
 
@@ -265,6 +287,7 @@ async def todo_delete_range(request: Request,
 
     for todo in todos:
         database.delete(todo)
+        deleting_todo(todo.id)
 
     database.commit()
     return {"answer": "ok"}
