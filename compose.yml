@@ -31,7 +31,7 @@ services:
     restart: always
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
-    entrypoint: /bin/sh -c "/application/script/wait-for-it.sh db:5432 -- /application/script/wait-for-it.sh elasticsearchhh:9200 -t 80 -- uvicorn application.main:app --host 0.0.0.0 --reload --port 80 --workers 4"
+    entrypoint: /bin/sh -c "/application/script/wait-for-it.sh db:5432 -- /application/script/wait-for-it.sh elasticsearchhh:9200 -t 8 -- uvicorn application.main:app --host 0.0.0.0 --reload --port 80 --workers 4"
   
   elasticsearch:
     image: elasticsearch:8.12.0
