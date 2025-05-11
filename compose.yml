@@ -4,6 +4,8 @@ services:
     container_name: db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - docker-elk
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -20,6 +22,8 @@ services:
         - path: ./application
           action: sync
           target: /application
+    networks:
+      - docker-elk
     ports:
       - "80:80"
     volumes:
@@ -27,11 +31,11 @@ services:
     restart: always
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/todo_db
-    entrypoint: /bin/sh -c "/application/script/wait-for-it.sh db:5432 -- uvicorn application.main:app --host 0.0.0.0 --port 80 --workers 4"
+    entrypoint: /bin/sh -c "/application/script/wait-for-it.sh db:5432 -- /application/script/wait-for-it.sh elasticsearchhh:9200 -t 8 -- uvicorn application.main:app --host 0.0.0.0 --reload --port 80 --workers 4"
   
   elasticsearch:
     image: elasticsearch:8.12.0
-    container_name: elasticsearchhh
+    container_name: elasticsearch
     volumes:
       - ./elastic_data_storage:/usr/share/elasticsearch/data
     environment:
@@ -47,7 +51,7 @@ services:
 
   kibana:
     image: kibana:8.12.0
-    container_name: kibanaa
+    container_name: kibana
     environment:
       - "ELASTICSEARCH_URL=http://elasticsearch:9200"
     networks:
