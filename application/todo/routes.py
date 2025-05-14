@@ -437,6 +437,43 @@ async def generate_todo(
                        )
     return {"answer", "ok"}
 
+@router.post("/generate_20", tags=["Generation"])
+async def generate_20_todo(
+        request: Request,
+        database: Session = Depends(get_db)
+):
+    titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
+              "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар",
+              "закладка",
+              "оскопление", "прибивание"]
+    types = ["Education", "Personal", "Plan"]
+
+    for i in range(0, 20):
+        '''
+        type: Annotated[str, Form()] = TodoTags.education.value,
+        source: Annotated[str, Form()] = Source.source_created.value,
+        details: Annotated[str, Form(max_length=500)] = None,
+        fullname: Annotated[str, Form()] = Users.user1.value,
+        date_creation: Annotated[date, Form()] = date.today(),
+        completed: Annotated[bool, Form()] = False,
+        date_completion: Annotated[date, Form()] = None,
+        '''
+        title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
+        type = types[random.randint(0, 2)]
+        todo = models.Todo(title=title,
+                           details=None,
+                           type=type,
+                           source=Source.source_generated.value,
+                           fullname=Users.user1.value,
+                           completed=False,
+                           date_creation=date.today(),
+                           date_completion=None)
+        database.add(todo)
+        database.commit()
+        logger.info(f"Creating todo: {todo}")
+        indexating_todo(id=todo.id,name=str(title),text=None,tag=type,date_creation=date.today())
+    return {"answer", "ok"}
+
 
 @router.get("/export", tags=["Files"])
 async def export(request: Request, database: Session = Depends(get_db)):
