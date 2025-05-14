@@ -94,4 +94,14 @@ sudo docker compose -f compose_tests.yml up --build
 ## Остановка
 ```bash
 sudo docker compose down
+
+
+## Докер для генерации 20 тудушек
+
+### Сборка
+sudo docker build -f DockerfileGeneratorWithElastic -t request-sender .
+
+### Запуск
+sudo docker run --network host request-sender
+
 ```
