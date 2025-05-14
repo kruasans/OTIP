@@ -381,6 +381,28 @@ function generation(count) {
         })
 }
 
+function generation_20() {
+    var path = "/todo/generate_20/";
+    fetch(path, {
+        method: "POST"
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status !== 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/todo/list";
+        })
+        .catch(error => {
+            console.error('Произошла ошибка:', error);
+            alert("Ошибка");
+            window.location.href = "/";
+        })
+}
+
 function delete_todo_in_range(start, end, type) {
     var path = "/todo/delete_range?start=" + start + "&end=" + end + "&type=" + type;
     fetch(path, {
