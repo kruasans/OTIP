@@ -386,9 +386,6 @@ async def todo_get(request: Request,
             models.Todo.id != todo.id).all()
         for todo_in in todos:
             other_todos_img.append(todo_in.id)
-    print(other_todos_img)
-    print(todo.image_path)
-    print(todo.hash)
     return templates.TemplateResponse("edit.html",
                                       {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": path,
                                        "image": True, "fullnames": Users, "other_todos_img": other_todos_img})
@@ -834,6 +831,21 @@ def load_image(request: Request,
     todo.hash = str(hash)
     database.commit()
     return {"answer": "ok"}
+
+
+@router.post("/load_txt/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
+def load_txt(request: Request,
+               todo_id: int,
+               file_input_txt: UploadFile = Form(),
+               database: Session = Depends(get_db),
+               current_user: models_login.Users = Depends(get_current_user)
+               ):
+    content = file_input_txt.file.read()
+    asdasd = 0
+    print(f"content: {content.decode('utf-8')}")
+    return {"answer": "ok"}
+
+
 
 
 @router.post("/generate/{todo_id}", tags=["Todo"])

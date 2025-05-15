@@ -33,7 +33,11 @@
     {% endif %}
     <input placeholder="picture.png" type="file" id="file_input" name="file_input" accept=".png"
            style="margin-bottom: 10px">
-    <button type="submit" onclick="load_image({{ todo.id }})">Загрузить</button>
+    <button type="submit" onclick="load_image({{ todo.id }})">Загрузить картинку</button>
+    <br>
+    <input placeholder="file.txt" type="file" id="file_input_txt" name="file_input_txt" accept=".txt"
+           style="margin-bottom: 10px">
+    <button type="submit" onclick="load_txt({{ todo.id }})">Загрузить текстовый файл</button>
     <br>
     {% for other_id in other_todos_img %}
         <li><a href="/todo/edit/{{ other_id }}">{{ other_id }}</a></li>
