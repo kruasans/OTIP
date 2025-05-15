@@ -38,20 +38,96 @@ router = APIRouter(
     tags=['Todo'],
 )
 
-
 es = Elasticsearch(["http://elasticsearch:9200"])
-index_name="todos"
+index_name = "todos"
+
+pipeline_body = {
+    "description": "Replace secret phrases before indexing",
+    "processors": [
+        {
+            "gsub": {
+                "field": "_source.text",
+                "pattern": "(?i)совершенно секретно",
+                "replacement": "не интересссно"
+            }
+        },
+        {
+            "gsub": {
+                "field": "_source.text",
+                "pattern": "(?i)секретно",
+                "replacement": "не интерессно"
+            }
+        },
+        {
+            "gsub": {
+                "field": "_source.text",
+                "pattern": "(?i)для служебного пользования",
+                "replacement": "не интересно"
+            }
+        },
+        {
+            "gsub": {
+                "field": "_source.name",
+                "pattern": "(?i)совершенно секретно",
+                "replacement": "не интересссно"
+            }
+        },
+        {
+            "gsub": {
+                "field": "_source.name",
+                "pattern": "(?i)секретно",
+                "replacement": "не интерессно"
+            }
+        },
+        {
+            "gsub": {
+                "field": "_source.name",
+                "pattern": "(?i)для служебного пользования",
+                "replacement": "не интересно"
+            }
+        }
+    ]
+}
+
+es.ingest.put_pipeline(id="secrecy_replacer", body=pipeline_body)
+
+group_names = ["константин", "максим", "артем"]
+
 index_body = {
     "settings": {
         "index": {
             "max_ngram_diff": 7
         },
         "analysis": {
+            "filter": {
+                "russian_stop": {
+                    "type": "stop",
+                    "stopwords": "_russian_"
+                },
+                "custom_name_stop": {
+                    "type": "stop",
+                    "stopwords": group_names
+                },
+                "snowball_russian": {
+                    "type": "snowball",
+                    "language": "Russian"
+                }
+            },
             "analyzer": {
                 "substring_analyzer": {
                     "type": "custom",
                     "tokenizer": "ngram_tokenizer",
                     "filter": ["lowercase"]
+                },
+                "russian_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [
+                        "lowercase",
+                        "russian_stop",
+                        "custom_name_stop",
+                        "snowball_russian"
+                    ]
                 }
             },
             "tokenizer": {
@@ -66,10 +142,32 @@ index_body = {
     },
     "mappings": {
         "properties": {
-            "name": {"type": "text","analyzer": "substring_analyzer","search_analyzer": "standard"},
-            "text": {"type": "text","analyzer": "substring_analyzer","search_analyzer": "standard"},
-            "tag": {"type": "keyword"},
-            "date_creation": {"type": "date"},
+            "name": {
+                "type": "text",
+                "analyzer": "substring_analyzer",
+                "fields": {
+                    "russian": {
+                        "type": "text",
+                        "analyzer": "russian_analyzer"
+                    }
+                }
+            },
+            "text": {
+                "type": "text",
+                "analyzer": "substring_analyzer",
+                "fields": {
+                    "russian": {
+                        "type": "text",
+                        "analyzer": "russian_analyzer"
+                    }
+                }
+            },
+            "tag": {
+                "type": "keyword"
+            },
+            "date_creation": {
+                "type": "date"
+            }
         }
     }
 }
@@ -83,17 +181,22 @@ mapping = {
         }
     }
 }
+
 if not es.indices.exists(index=index_name):
     es.indices.create(index=index_name, body=index_body)
+    settings = {
+        "index.default_pipeline": "secrecy_replacer"
+    }
+
+    es.indices.put_settings(index="todos", body=settings)
 
 
-def indexating_todo(id,text,name,tag,date_creation):
+def indexating_todo(id, text, name, tag, date_creation):
     document = {
         "name": name,
         "text": text,
         "tag": tag,
-        "creation_date": date_creation,
-        
+        "creation_date": date_creation
     }
     response = es.index(
         index=index_name,
@@ -102,9 +205,10 @@ def indexating_todo(id,text,name,tag,date_creation):
     )
     return response
 
-def editing_todo(id,name, text):
-    updated_data  = {
-        "doc":{
+
+def editing_todo(id, name, text):
+    updated_data = {
+        "doc": {
             "name": name,
             "text": text
         }
@@ -112,28 +216,30 @@ def editing_todo(id,name, text):
     response = es.update(index=index_name, id=id, body=updated_data)
     return response
 
+
 def deleting_todo(id: int) -> Response:
     if not es.exists(index=index_name, id=id):
-        return False, f"Документ с ID {id} не существует"    
+        return False, f"Документ с ID {id} не существует"
     return es.delete(index=index_name, id=id)
 
 
 def find_ids_by_tag(tag):
     query = {
-        "query":{
-            "match":{
+        "query": {
+            "match": {
                 "tag": str(tag)
             }
-         }
+        }
     }
     response = es.search(index=index_name, body=query)
-    l=[]
+    l = []
     for hit in response['hits']['hits']:
         l.append(hit['_id'])
     return l
-    
+
+
 def find_by_date(date):
-    l=[]
+    l = []
     try:
         dt_object = datetime.datetime.strptime(date, "%Y-%m-%d").date()
         query = {
@@ -150,25 +256,23 @@ def find_by_date(date):
             l.append(hit['_id'])
         return l
     except ValueError:
-       return []
+        return []
+
 
 def find_by_text(text):
-    l=[]
-    query={
-            "query": {
-                "multi_match": {
-                    "query": text,
-                    "fields": ["name", "text"]
-                }
+    l = []
+    query = {
+        "query": {
+            "multi_match": {
+                "query": text,
+                "fields": ["name", "text"]
             }
         }
-    response = es.search(index=index_name,body=query)
+    }
+    response = es.search(index=index_name, body=query)
     for hit in response['hits']['hits']:
         l.append(hit['_id'])
     return l
-               
-        
-                
 
 
 @router.get("/list", tags=["Lists"])
@@ -185,14 +289,14 @@ async def list_todo(request: Request,
         else:
             limit = request.cookies.get('limit')
     elif not limit.isdigit():
-        limit="5"
+        limit = "5"
     if skip is None:
         if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
             skip = "0"
         else:
             skip = request.cookies.get('skip')
     elif not skip.isdigit():
-        skip="0"
+        skip = "0"
     limit, skip = int(limit), int(skip)
     logger.info("Todo list")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -203,18 +307,18 @@ async def list_todo(request: Request,
     skip_todos = limit * skip
     if skip >= count_pages:
         skip_todos = skip = 0
-    ids=find_ids_by_tag(type)
+    ids = find_ids_by_tag(type)
     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
         skip_todos).limit(limit)
-    if (date is not None or date =='') and not TodoTags.contains(type) and (text is not None or text ==''):
+    if (date is not None or date == '') and not TodoTags.contains(type) and (text is not None or text == ''):
         ids = find_by_date(date)
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
             skip_todos).limit(limit)
-    if (text is not None or text =='') and not TodoTags.contains(type) and (date is None or date==''):
+    if (text is not None or text == '') and not TodoTags.contains(type) and (date is None or date == ''):
         ids = find_by_text(text)
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-            skip_todos).limit(limit)        
-    if (type is None or not TodoTags.contains(type)) and (date is None or date=='') and (text is None or text ==''):
+            skip_todos).limit(limit)
+    if (type is None or not TodoTags.contains(type)) and (date is None or date == '') and (text is None or text == ''):
         logger.info("hui blyat")
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
@@ -257,7 +361,7 @@ async def todo_add(request: Request,
         database.add(todo)
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id,name=str(title),text=details,tag=type,date_creation=date_creation)
+        indexating_todo(id=todo.id, name=str(title), text=details, tag=type, date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
 
@@ -278,7 +382,8 @@ async def todo_get(request: Request,
     logger.info(f"Getting todo: {todo}")
     other_todos_img = []
     if not todo.hash == "":
-        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).filter(models.Todo.id != todo.id).all()
+        todos = database.query(models.Todo).filter(models.Todo.hash == todo.hash).filter(
+            models.Todo.id != todo.id).all()
         for todo_in in todos:
             other_todos_img.append(todo_in.id)
     print(other_todos_img)
@@ -352,6 +457,7 @@ async def todo_delete_all(request: Request,
                           database=database)
     return {"answer": "ok"}
 
+
 @router.delete("/delete_range", tags=["Todo"])
 async def todo_delete_range(request: Request,
                             start: str = "0",
@@ -360,7 +466,6 @@ async def todo_delete_range(request: Request,
                             database: Session = Depends(get_db),
                             current_user: models_login.Users = Depends(get_current_user),
                             ):
-
     if start.isdigit() and end.isdigit():
         start, end = int(start), int(end)
     else:
@@ -437,6 +542,7 @@ async def generate_todo(
                        )
     return {"answer", "ok"}
 
+
 @router.post("/generate_20", tags=["Generation"])
 async def generate_20_todo(
         request: Request,
@@ -471,7 +577,7 @@ async def generate_20_todo(
         database.add(todo)
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id,name=str(title),text=None,tag=type,date_creation=date.today())
+        indexating_todo(id=todo.id, name=str(title), text=None, tag=type, date_creation=date.today())
     return {"answer", "ok"}
 
 
@@ -547,10 +653,10 @@ async def visualization(request: Request,
         else:
             limit = request.cookies.get('limit')
             skip = request.cookies.get('skip_visualization')
-    elif not limit.isdigit() or int(limit)==0:
-        limit="5"
+    elif not limit.isdigit() or int(limit) == 0:
+        limit = "5"
     if not skip.isdigit():
-        skip="0"
+        skip = "0"
     limit, skip = int(limit), int(skip)
     logger.info("Visualization page")
     count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
@@ -627,8 +733,8 @@ async def issue_page(request: Request):
     return templates.TemplateResponse("import_issues.html", {"request": request})
 
 
-def get_issues(url = Form(...),
-               token = Form(...)):
+def get_issues(url=Form(...),
+               token=Form(...)):
     try:
         if "http" not in url:
             raise Exception
@@ -732,7 +838,6 @@ def load_image(request: Request,
 
 @router.post("/generate/{todo_id}", tags=["Todo"])
 async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
-
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
@@ -741,9 +846,8 @@ async def vis(request: Request, todo_id: int, database: Session = Depends(get_db
     plt.axis("off")
     plt.imshow(wc, interpolation="bilinear")
 
-
     image = f"Image{todo.id}.png"
-    path = str(Path.cwd() / "application"/ "static" / "media" / image)
+    path = str(Path.cwd() / "application" / "static" / "media" / image)
     plt.savefig(path, format='png')
     try:
         with open(path, "rb") as file:
@@ -767,29 +871,30 @@ async def extend_detail(request: Request,
                         todo_id: int,
                         database: Session = Depends(get_db),
                         current_user: models_login.Users = Depends(get_current_user)
-):
+                        ):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
-    symbols=[".",",",";",":","!","@","#","$","%","^","&","*","(",")","+","=","_","`","~","<",">","?","/","\"","\'","\\","|"]
-    if todo.details is None or len(todo.details)<=10:
+    symbols = [".", ",", ";", ":", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "=", "_", "`", "~", "<", ">",
+               "?", "/", "\"", "\'", "\\", "|"]
+    if todo.details is None or len(todo.details) <= 10:
         with open("application/todo/data/corpus.txt", encoding='utf-8') as f:
             text = f.read()
         text_model = markovify.Text(text)
         text_model.generate_corpus(text)
-        todo.details =  text_model.make_short_sentence(200)
-    elif len(todo.details)>10:
-        words=todo.details.split(" ")
-        last=words[-1]
+        todo.details = text_model.make_short_sentence(200)
+    elif len(todo.details) > 10:
+        words = todo.details.split(" ")
+        last = words[-1]
         if last == "" or last in symbols:
-            last=words[-2]
-            lent=len(last)
+            last = words[-2]
+            lent = len(last)
             string = todo.details[0:(len(todo.details) - 2 - lent)]
         else:
-            lent=len(last)
-            string = todo.details[0:(len(todo.details)-1-lent)]
+            lent = len(last)
+            string = todo.details[0:(len(todo.details) - 1 - lent)]
         if "." in last:
-            last=last.split(".")[0]
+            last = last.split(".")[0]
         elif "!" in last:
             last = last.split("!")[0]
         elif "?" in last:
@@ -798,8 +903,8 @@ async def extend_detail(request: Request,
             text = f.read()
         text_model = markovify.Text(text)
         text_model.generate_corpus(text)
-        count=0
-        while (count<10):
+        count = 0
+        while (count < 10):
             try:
                 gen = text_model.make_short_sentence(200)
                 strin = "\n" + last + " " + gen + "\n"
@@ -808,20 +913,19 @@ async def extend_detail(request: Request,
                 new_model = markovify.Text(new_text)
                 new_model.generate_corpus(new_text)
                 tex = new_model.make_sentence_with_start(last)
-                todo.details =string +" " + tex
+                todo.details = string + " " + tex
                 break
-            except (ParamError,KeyError):
-                count+=1
-            if count==10:
+            except (ParamError, KeyError):
+                count += 1
+            if count == 10:
                 text_model = markovify.Text(text)
                 text_model.generate_corpus(text)
                 todo.details = text_model.make_short_sentence(200)
 
-    if len(todo.details)>400:
-        detail=todo.details[0:399]
-        lenght=len(detail.split(" ")[-1])
-        todo.details=todo.details[0:(398-lenght)]
+    if len(todo.details) > 400:
+        detail = todo.details[0:399]
+        lenght = len(detail.split(" ")[-1])
+        todo.details = todo.details[0:(398 - lenght)]
 
     database.commit()
-    return {"answer":"ok"}
-
+    return {"answer": "ok"}
