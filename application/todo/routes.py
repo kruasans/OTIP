@@ -128,6 +128,15 @@ index_body = {
                         "custom_name_stop",
                         "snowball_russian"
                     ]
+                },
+                "word_analyzer": {  # Новый анализатор для статистики
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [
+                        "lowercase",
+                        "russian_stop",  # Игнорируем предлоги
+                        "length"         # Отсеиваем короткие слова
+                    ]
                 }
             },
             "tokenizer": {
@@ -142,9 +151,21 @@ index_body = {
     },
     "mappings": {
         "properties": {
+            "combined": {
+                "type": "text",
+                "analyzer": "word_analyzer",
+                "fielddata": True,
+                "fields": {
+                    "russian": {
+                        "type": "text",
+                        "analyzer": "russian_analyzer"
+                    }
+                }
+            },
             "name": {
                 "type": "text",
                 "analyzer": "substring_analyzer",
+                "copy_to": "combined",
                 "fields": {
                     "russian": {
                         "type": "text",
@@ -155,6 +176,18 @@ index_body = {
             "text": {
                 "type": "text",
                 "analyzer": "substring_analyzer",
+                "copy_to": "combined",
+                "fields": {
+                    "russian": {
+                        "type": "text",
+                        "analyzer": "russian_analyzer"
+                    }
+                }
+            },
+            "text_from_file": {
+                "type": "text",
+                "analyzer": "substring_analyzer",
+                "copy_to": "combined",
                 "fields": {
                     "russian": {
                         "type": "text",
@@ -195,6 +228,7 @@ def indexating_todo(id, text, name, tag, date_creation):
     document = {
         "name": name,
         "text": text,
+        "text_from_file":"",
         "tag": tag,
         "creation_date": date_creation
     }
@@ -211,6 +245,15 @@ def editing_todo(id, name, text):
         "doc": {
             "name": name,
             "text": text
+        }
+    }
+    response = es.update(index=index_name, id=id, body=updated_data)
+    return response
+
+def editing_text_from_file_todo(id, text_from_file):
+    updated_data = {
+        "doc": {
+            "text_from_file": text_from_file
         }
     }
     response = es.update(index=index_name, id=id, body=updated_data)
@@ -265,7 +308,7 @@ def find_by_text(text):
         "query": {
             "multi_match": {
                 "query": text,
-                "fields": ["name", "text"]
+                "fields": ["name", "text", "text_from_file"]
             }
         }
     }
@@ -283,6 +326,27 @@ async def list_todo(request: Request,
                     skip: str = None,
                     date: str = None,
                     text: str = None):
+    terms = ""
+    try:
+        search_body = {
+            "size": 0,  # Не возвращаем документы
+            "aggs": {
+                "top_words": {
+                    "terms": {
+                        "field": "combined",  # Поле для агрегации
+                        "size": 10,
+                        "order": {"_count": "desc"}  # Сортировка по частоте
+                    }
+                }
+            }
+        }
+        res = es.search(index=index_name, body=search_body)
+        # print(f'res: {res}')
+        terms = res["aggregations"]["top_words"]["buckets"]
+        # terms = res["aggregations"]["top_words"]["buckets"]
+        print(terms)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     if limit is None:
         if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
             limit = "5"
@@ -328,7 +392,8 @@ async def list_todo(request: Request,
                                                        "limit": limit,
                                                        "skip": skip,
                                                        "count_pages": count_pages,
-                                                       "types": TodoTags, "type": type})
+                                                       "types": TodoTags, "type": type,
+                                                       "top_10": terms})
     template_response.set_cookie("limit", str(limit))
     template_response.set_cookie("skip", str(skip))
     return template_response
@@ -361,7 +426,7 @@ async def todo_add(request: Request,
         database.add(todo)
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=details, tag=type, date_creation=date_creation)
+        indexating_todo(id=todo.id, name=str(title), text=details if details is not None else "", tag=type, date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
 
@@ -564,7 +629,7 @@ async def generate_20_todo(
         title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
         type = types[random.randint(0, 2)]
         todo = models.Todo(title=title,
-                           details=None,
+                           details=title,
                            type=type,
                            source=Source.source_generated.value,
                            fullname=Users.user1.value,
@@ -574,7 +639,7 @@ async def generate_20_todo(
         database.add(todo)
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=None, tag=type, date_creation=date.today())
+        indexating_todo(id=todo.id, name=str(title), text=str(title), tag=type, date_creation=date.today())
     return {"answer", "ok"}
 
 
@@ -841,8 +906,7 @@ def load_txt(request: Request,
                current_user: models_login.Users = Depends(get_current_user)
                ):
     content = file_input_txt.file.read()
-    asdasd = 0
-    print(f"content: {content.decode('utf-8')}")
+    editing_text_from_file_todo(todo_id, content.decode('utf-8'))
     return {"answer": "ok"}
 
 
