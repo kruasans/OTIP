@@ -21,6 +21,7 @@ from application.login import routes as user_routes
 
 from application.login.schems import UserCreate
 
+
 todo_models.Base.metadata.create_all(bind=ENGINE)
 user_models.Base.metadata.create_all(bind=ENGINE)
 
@@ -63,6 +64,8 @@ async def home(request: Request,
                                            "fullnames": todo_tags.Users, "cha": count_cha,
                                            "zva": count_zva, "pro": count_pro})
     template.set_cookie("limit", str(limit))
+
+
     return template
 
 

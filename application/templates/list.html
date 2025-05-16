@@ -29,6 +29,13 @@
     <button type="submit" onclick="delete_todo_in_range(document.getElementById('start').value, document.getElementById('end').value,'{{ type }}')" class="delete-range-btn">Удалить в заданном диапазоне</button>
     </div>
 
+    <div><!--Тут топ10-->
+        <span style="color:green;">ТОП 10</span>
+        {% for term in top_10 %}
+        <span style="color:black;">{{ term.key }}: {{ term.doc_count }}</span>
+        {% endfor %}
+    </div>
+    
     <div>
         {% for todo in todos %}
             <div class="title">
