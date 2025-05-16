@@ -232,7 +232,7 @@ function load_image(todo_id) {
             return response.json();
         })
         .then(data => {
-            location.reload();
+            //location.reload();
         })
         .catch(error => {
             if (error.message == "401") {
@@ -242,7 +242,55 @@ function load_image(todo_id) {
                 window.location.href = "/login/log_in";
             } else if (error.message == "422") {
                 alert("Неверный формат данных");
+                // location.reload();
+            } else if (error.message == "415") {
+                alert("Неверный формат картинки");
                 location.reload();
+            } else {
+                if (error.message == "409") {
+                    alert("Выбран дубликат");
+                    location.reload();
+                } else {
+                    console.error('Произошла ошибка:', error);
+                    alert("Ошибка");
+                    window.location.href = "/";
+                }
+            }
+        })
+}
+
+function load_txt(todo_id) {
+    var path = "/todo/load_txt/" + todo_id;
+    formData = new FormData();
+    var file_input = document.getElementById('file_input_txt');
+    var file = file_input.files[0];
+    formData.append("file_input_txt", file);
+    fetch(path, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status != 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            //location.reload();
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                alert("Ошибка авторизации");
+                window.location.href = "/login/log_in";
+            } else if (error.message == "422") {
+                alert("Неверный формат данных");
+                // location.reload();
             } else if (error.message == "415") {
                 alert("Неверный формат картинки");
                 location.reload();
@@ -378,6 +426,28 @@ function generation(count) {
                 alert("Ошибка");
                 window.location.href = "/";
             }
+        })
+}
+
+function generation_20() {
+    var path = "/todo/generate_20/";
+    fetch(path, {
+        method: "POST"
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status !== 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/todo/list";
+        })
+        .catch(error => {
+            console.error('Произошла ошибка:', error);
+            alert("Ошибка");
+            window.location.href = "/";
         })
 }
 

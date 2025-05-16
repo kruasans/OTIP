@@ -1,0 +1,9 @@
+FROM python:3.9-slim
+
+WORKDIR /application/script/
+
+RUN pip install requests
+
+COPY application/script/generate_20.py .
+
+CMD ["python", "generate_20.py"]
