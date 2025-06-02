@@ -10,11 +10,12 @@
                 <option value="{{ type.value }}">{{ type.value }}</option>
             {% endfor %}
         </select>
-        <select name="fullname" id="fullname">
+        <!-- <select name="fullname" id="fullname">
             {% for fullname in fullnames %}
                 <option value="{{ fullname.value }}">{{ fullname.value }}</option>
             {% endfor %}
-        </select>
+        </select> -->
+        <input type="text" id="fullname" placeholder="fullname">
         <button id="add_new_todo" onclick="add_todo()" type="submit">Добавить</button>
 <!--    </form>-->
 
