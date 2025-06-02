@@ -1,8 +1,8 @@
 from fastapi.templating import Jinja2Templates
 from fastapi import APIRouter, Request, Depends, status, Form, UploadFile, HTTPException
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response, HTMLResponse, StreamingResponse
 
-from typing import Annotated
+from typing import Annotated, List
 import io
 import math
 import os
@@ -14,6 +14,7 @@ import gitlab
 import pandas as pd
 from gitlab import GitlabAuthenticationError
 from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
 from wordcloud import WordCloud
 from PIL import Image
 import imagehash
@@ -215,6 +216,28 @@ mapping = {
     }
 }
 
+activity_mapping = {
+    "mappings": {
+        "properties": {
+            "fullname": {
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "date_creation": {
+                "type": "date",
+                "format": "yyyy-MM-dd"
+            }
+        }
+    }
+}
+
+if not es.indices.exists(index="activity"):
+    es.indices.create(index="activity", body=activity_mapping)
+
 if not es.indices.exists(index=index_name):
     es.indices.create(index=index_name, body=index_body)
     settings = {
@@ -234,6 +257,18 @@ def indexating_todo(id, text, name, tag, date_creation):
     }
     response = es.index(
         index=index_name,
+        id=id,
+        body=document
+    )
+    return response
+    
+def todo_activity(id, fullname, date_creation):
+    document = {
+        "fullname": fullname,
+        "creation_date": date_creation
+    }
+    response = es.index(
+        index="activity",
         id=id,
         body=document
     )
@@ -383,7 +418,6 @@ async def list_todo(request: Request,
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
             skip_todos).limit(limit)
     if (type is None or not TodoTags.contains(type)) and (date is None or date == '') and (text is None or text == ''):
-        logger.info("hui blyat")
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
                                                    {
@@ -427,6 +461,7 @@ async def todo_add(request: Request,
         database.commit()
         logger.info(f"Creating todo: {todo}")
         indexating_todo(id=todo.id, name=str(title), text=details if details is not None else "", tag=type, date_creation=date_creation)
+        todo_activity(id=todo.id, fullname=fullname, date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
 
@@ -1015,3 +1050,106 @@ async def extend_detail(request: Request,
 
     database.commit()
     return {"answer": "ok"}
+    
+@router.get("/activity", response_class=HTMLResponse)
+async def read_root(request: Request):
+    users = await get_unique_users()
+    return templates.TemplateResponse("activity.html", {"request": request, "users": users})
+
+@router.post("/plot.png")
+async def generate_plot(username: str = Form(...)):
+    try:
+        activity_data = await get_user_activity(username)
+        
+        if not activity_data["days"] or not activity_data["counts"]:
+            raise ValueError("Нет данных для построения графика")
+        dates = [datetime.datetime.strptime(day, "%Y-%m-%d") for day in activity_data["days"]]
+        counts = activity_data["counts"]
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        ax.plot(dates, counts, marker='o', linestyle='-', color='tab:blue')
+        ax.set_title(f'Активность пользователя {activity_data["username"]}')
+        ax.set_xlabel('Дата')
+        ax.set_ylabel('Количество записей')
+        
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m.%Y'))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Метки каждую неделю
+        ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+        
+        plt.xticks(rotation=45, ha='right')
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.tight_layout()
+        
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+        
+        return StreamingResponse(buf, media_type="image/png")
+    
+    except Exception as e:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, f"Ошибка: {str(e)}", 
+                ha='center', va='center', fontsize=12)
+        ax.axis('off')
+        
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        plt.close(fig)
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="image/png")
+
+async def get_unique_users() -> List[str]:
+    result = es.search(index="activity", body={
+        "size": 0,
+        "aggs": {
+            "unique_users": {
+                "terms": {
+                    "field": "fullname.keyword",
+                    "size": 1000
+                }
+            }
+        }
+    })
+    return [bucket["key"] for bucket in result["aggregations"]["unique_users"]["buckets"]]
+
+async def get_user_activity(username: str) -> dict:
+    start_date = date.today().replace(month=1, day=1).strftime('%Y-%m-%d')
+    
+    query = {
+        "query": {
+            "bool": {
+                "must": [
+                    {"match": {"fullname.keyword": username}},
+                    {"range": {
+                        "creation_date": {
+                            "gte": start_date,
+                            "lte": "now/d"
+                        }
+                    }}
+                ]
+            }
+        },
+        "aggs": {
+            "activity_by_day": {
+                "date_histogram": {
+                    "field": "creation_date",
+                    "calendar_interval": "day",
+                    "format": "yyyy-MM-dd"
+                }
+            }
+        },
+        "size": 0
+    }
+    
+    result = es.search(index="activity", body=query)
+    
+    days = []
+    counts = []
+    
+    for bucket in result["aggregations"]["activity_by_day"]["buckets"]:
+        days.append(bucket["key_as_string"][:10])
+        counts.append(bucket["doc_count"])
+    print(days,counts)
+    return {"days": days, "counts": counts, "username": username}
