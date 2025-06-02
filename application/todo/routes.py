@@ -419,7 +419,7 @@ async def todo_add(request: Request,
                            details=details,
                            type=type,
                            source=source,
-                           fullname=fullname,
+                           fullname=fullname if current_user.name == "admin" else current_user.name,
                            completed=completed,
                            date_creation=date_creation,
                            date_completion=date_completion)
@@ -517,10 +517,14 @@ async def todo_delete_all(request: Request,
                           ):
     """Delete all todos"""
     all_todos = database.query(models.Todo).all()
+        
     for todo in all_todos:
+        if current_user.name != todo.fullname:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         await todo_delete(request=request,
                           todo_id=todo.id,
-                          database=database)
+                          database=database,
+                          current_user=current_user)
     return {"answer": "ok"}
 
 

@@ -25,11 +25,11 @@ function add_todo() {
         })
         .catch(error => {
             if (error.message == "401") {
-             localStorage.removeItem('token');
-             localStorage.removeItem('username');
+            //  localStorage.removeItem('token');
+            //  localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/login/log_in";
+            // window.location.href = "/login/log_in";
             } else {
                 alert("Ошибка");
                 console.error('Произошла ошибка:', error);
@@ -87,10 +87,10 @@ function delete_entry(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
@@ -107,7 +107,7 @@ function delete_every_todo() {
         },
     })
         .then(response => {
-            console.log("response");
+            console.log("response" + response.status);
             if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
@@ -117,13 +117,13 @@ function delete_every_todo() {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/";
+                // window.location.href = "/";
             }
         })
 }
@@ -470,10 +470,10 @@ function delete_todo_in_range(start, end, type) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
