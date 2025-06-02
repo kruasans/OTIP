@@ -57,10 +57,10 @@ function change_status(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
@@ -174,7 +174,7 @@ function edit(todo_id) {
     formData.append("title", document.getElementById('title').value);
     formData.append("details", document.getElementById('details').value);
     formData.append("completed", document.getElementById('completed').checked);
-    formData.append("fullname", document.getElementById('fullname').value);
+    // formData.append("fullname", document.getElementById('fullname').value);
     fetch(path, {
         method: "POST",
         body: formData,
@@ -195,10 +195,10 @@ function edit(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                window.location.href = "/todo/list";
             } else if (error.message == "422") {
                 alert("Неверный формат данных");
                 window.location.href = "/todo/list";
