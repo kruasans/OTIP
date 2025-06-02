@@ -11,12 +11,15 @@
     <br>
     <label for="completed">Выполнено?</label>
     <input id="completed" type="checkbox" name="completed" {% if todo.completed %}checked{% endif %}>
-    <select id="fullname" name="fullname">
+    <!-- <select id="fullname" name="fullname">
         {% for fullname in fullnames %}
             <option value="{{ fullname.value }}" {% if todo.fullname == fullname.value %} selected {% endif %}>
                 {{ fullname.value }}</option>
         {% endfor %}
-    </select>
+    </select> -->
+    <div>
+        <span style=>Владелец: {{ todo.fullname }}</span>
+    </div>
     <div>
         <span style="color:green;">Дата создания: {{ todo.date_creation }}</span>
     </div>
