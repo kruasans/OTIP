@@ -471,6 +471,8 @@ async def todo_edit(
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is not None and title is not None and title.replace(" ", "") != "":
+        if current_user.name != todo.fullname:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
         logger.info(f"Editting todo: {todo}")
         todo.title = title
@@ -499,6 +501,8 @@ async def todo_delete(request: Request,
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
+    if current_user.name != todo.fullname:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
     database.commit()
@@ -544,7 +548,9 @@ async def todo_delete_range(request: Request,
 
     # todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).all()
     todos = query.order_by(models.Todo.id.desc()).offset(start - 1).limit(end - start + 1)
-
+    for todo in todos:
+        if current_user.name != todo.fullname:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     for todo in todos:
         database.delete(todo)
         deleting_todo(todo.id)
