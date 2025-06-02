@@ -463,7 +463,6 @@ async def todo_edit(
         title: Annotated[str, Form(max_length=50)] = None,
         details: Annotated[str, Form(max_length=500)] = None,
         completed: bool = Form(False),
-        fullname: Annotated[str, Form()] = "2021-3-26-cha",
         database: Session = Depends(get_db),
         current_user: models_login.Users = Depends(get_current_user)
 ):
@@ -471,14 +470,14 @@ async def todo_edit(
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is not None and title is not None and title.replace(" ", "") != "":
-        if current_user.name != todo.fullname:
+        if current_user.name != todo.fullname and current_user.name != "admin":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
         logger.info(f"Editting todo: {todo}")
         todo.title = title
         todo.details = details
         todo.completed = completed
-        todo.fullname = fullname
+        todo.fullname = current_user.name if current_user.name != "admin" else "user"
 
         if completed is False:
             todo.date_completion = None
@@ -501,7 +500,7 @@ async def todo_delete(request: Request,
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
-    if current_user.name != todo.fullname:
+    if current_user.name != todo.fullname and current_user.name != "admin":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
@@ -517,10 +516,9 @@ async def todo_delete_all(request: Request,
                           ):
     """Delete all todos"""
     all_todos = database.query(models.Todo).all()
-        
-    for todo in all_todos:
-        if current_user.name != todo.fullname:
+    if current_user.name != "admin":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    for todo in all_todos:
         await todo_delete(request=request,
                           todo_id=todo.id,
                           database=database,
@@ -552,9 +550,8 @@ async def todo_delete_range(request: Request,
 
     # todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).all()
     todos = query.order_by(models.Todo.id.desc()).offset(start - 1).limit(end - start + 1)
-    for todo in todos:
-        if current_user.name != todo.fullname:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if current_user.name != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     for todo in todos:
         database.delete(todo)
         deleting_todo(todo.id)
@@ -573,6 +570,8 @@ async def todo_change_status(request: Request,
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is not None:
+        if current_user.name != todo.fullname and current_user.name != "admin":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         if todo.completed is True:
             todo.completed = False
             todo.date_completion = None
@@ -608,6 +607,7 @@ async def generate_todo(
                        title=title,
                        type=type,
                        source=Source.source_generated.value,
+                       fullname="user",
                        details=None,
                        database=database,
                        current_user=current_user
@@ -642,7 +642,7 @@ async def generate_20_todo(
                            details=title,
                            type=type,
                            source=Source.source_generated.value,
-                           fullname=Users.user1.value,
+                           fullname="user",
                            completed=False,
                            date_creation=date.today(),
                            date_completion=None)
