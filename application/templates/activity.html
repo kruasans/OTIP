@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+    <style>
+        #chartImage {
+            max-width: 100%;
+            height: auto;
+            max-height: 500px;
+        }
+        .loading {
+            display: none;
+            margin-top: 10px;
+            color: #666;
+        }
+    </style>
+            <div class="header">
+        <h1>График активности пользователей</h1>
+        <p class="current-year">Данные с начала <span id="currentYear"></span> года</p>
+    </div>
+    
+    <div class="controls">
+        <select id="userSelect">
+            {% for user in users %}
+            <option value="{{ user }}">{{ user }}</option>
+            {% endfor %}
+        </select>
+        <button id="showChartBtn">Показать график</button>
+    </div>
+    
+    <div class="loading" id="loadingIndicator">
+        Загрузка данных...
+    </div>
+    
+    <div class="chart-container">
+        <img id="chartImage" src="" alt="График активности">
+    </div>
+
+    <script src="{{ url_for('static', path='js/activity.js') }}"></script>
+
+{% endblock content %}
