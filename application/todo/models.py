@@ -39,3 +39,8 @@ class HistoryList(Base):
     time_event = Column(DateTime, default=datetime.now())
     event = Column(Text)
     fullname = Column(Text, default="user")
+
+class UsersTags(Base):
+    __tablename__ = 'user_tags'
+    id = Column(Integer, primary_key=True)
+    tag = Column(Text, default="")

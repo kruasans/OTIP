@@ -549,3 +549,61 @@ function extend(id) {
             }
         })
 }
+
+function create_tag() {
+    formData = new FormData()
+    console.log(document.getElementById('tag_name').value)
+    formData.append("tag_name", document.getElementById('tag_name').value)
+    fetch(`/todo/create_tag`, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            if (response.status == 401)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                alert("Ошибка авторизации");
+            } else {
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
+
+function delete_tag() {
+    formData = new FormData()
+    // console.log(document.getElementById('tag_name').value)
+    formData.append("tag_name", document.getElementById('tag_name').value)
+    fetch(`/todo/delete_tag`, {
+        method: "DELETE",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            if (response.status == 401)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                alert("Ошибка авторизации");
+            } else {
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
