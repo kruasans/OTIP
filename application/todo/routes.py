@@ -8,7 +8,6 @@ import math
 import os
 import random
 from datetime import date, datetime
-import datetime
 from loguru import logger
 import gitlab
 import pandas as pd
@@ -136,7 +135,7 @@ index_body = {
                     "filter": [
                         "lowercase",
                         "russian_stop",  # Игнорируем предлоги
-                        "length"         # Отсеиваем короткие слова
+                        "length"  # Отсеиваем короткие слова
                     ]
                 }
             },
@@ -251,7 +250,7 @@ def indexating_todo(id, text, name, tag, date_creation):
     document = {
         "name": name,
         "text": text,
-        "text_from_file":"",
+        "text_from_file": "",
         "tag": tag,
         "creation_date": date_creation
     }
@@ -261,7 +260,8 @@ def indexating_todo(id, text, name, tag, date_creation):
         body=document
     )
     return response
-    
+
+
 def todo_activity(id, fullname, date_creation):
     document = {
         "fullname": fullname,
@@ -284,6 +284,7 @@ def editing_todo(id, name, text):
     }
     response = es.update(index=index_name, id=id, body=updated_data)
     return response
+
 
 def editing_text_from_file_todo(id, text_from_file):
     updated_data = {
@@ -458,9 +459,17 @@ async def todo_add(request: Request,
                            date_creation=date_creation,
                            date_completion=date_completion)
         database.add(todo)
+        print(todo.id)
+
+        database.commit()
+        database.add(
+            models.HistoryList(todo_id=todo.id,
+                               event="created",
+                               fullname=current_user.name))
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=details if details is not None else "", tag=type, date_creation=date_creation)
+        indexating_todo(id=todo.id, name=str(title), text=details if details is not None else "", tag=type,
+                        date_creation=date_creation)
         todo_activity(id=todo.id, fullname=fullname, date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
@@ -518,10 +527,31 @@ async def todo_edit(
             todo.date_completion = None
         else:
             todo.date_completion = date.today()
+        database.add(
+            models.HistoryList(todo_id=todo.id,
+                               event="edited",
+                               fullname=current_user.name))
         database.commit()
         editing_todo(id=todo_id, name=str(title), text=details)
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+@router.get("/history/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
+async def todo_history(
+        request: Request,
+        todo_id: int,
+        database: Session = Depends(get_db)
+):
+    # Получаем все записи истории для указанного todo_id
+    history = (
+        database.query(models.HistoryList)
+        .filter(models.HistoryList.todo_id == todo_id)
+        .order_by(models.HistoryList.time_event.desc())
+        .all()
+    )
+    templates_response = templates.TemplateResponse("history.html", {"request": request, "todo_id": todo_id, "history": history})
+    return templates_response
 
 
 @router.delete("/delete/{todo_id}", tags=["Todo"])
@@ -536,9 +566,11 @@ async def todo_delete(request: Request,
     if todo is None:
         raise HTTPException(status_code=301)
     if current_user.name != todo.fullname and current_user.name != "admin":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
+    history = database.query(models.HistoryList).filter(models.HistoryList.todo_id == todo_id)
+    database.delete(history)
     database.commit()
     deleting_todo(todo_id)
     return {"answer": "ok"}
@@ -552,7 +584,7 @@ async def todo_delete_all(request: Request,
     """Delete all todos"""
     all_todos = database.query(models.Todo).all()
     if current_user.name != "admin":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     for todo in all_todos:
         await todo_delete(request=request,
                           todo_id=todo.id,
@@ -945,16 +977,14 @@ def load_image(request: Request,
 
 @router.post("/load_txt/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
 def load_txt(request: Request,
-               todo_id: int,
-               file_input_txt: UploadFile = Form(),
-               database: Session = Depends(get_db),
-               current_user: models_login.Users = Depends(get_current_user)
-               ):
+             todo_id: int,
+             file_input_txt: UploadFile = Form(),
+             database: Session = Depends(get_db),
+             current_user: models_login.Users = Depends(get_current_user)
+             ):
     content = file_input_txt.file.read()
     editing_text_from_file_todo(todo_id, content.decode('utf-8'))
     return {"answer": "ok"}
-
-
 
 
 @router.post("/generate/{todo_id}", tags=["Todo"])
@@ -1050,55 +1080,58 @@ async def extend_detail(request: Request,
 
     database.commit()
     return {"answer": "ok"}
-    
+
+
 @router.get("/activity", response_class=HTMLResponse)
 async def read_root(request: Request):
     users = await get_unique_users()
     return templates.TemplateResponse("activity.html", {"request": request, "users": users})
 
+
 @router.post("/plot.png")
 async def generate_plot(username: str = Form(...)):
     try:
         activity_data = await get_user_activity(username)
-        
+
         if not activity_data["days"] or not activity_data["counts"]:
             raise ValueError("Нет данных для построения графика")
         dates = [datetime.datetime.strptime(day, "%Y-%m-%d") for day in activity_data["days"]]
         counts = activity_data["counts"]
-        
+
         fig, ax = plt.subplots(figsize=(12, 6))
-        
+
         ax.plot(dates, counts, marker='o', linestyle='-', color='tab:blue')
         ax.set_title(f'Активность пользователя {activity_data["username"]}')
         ax.set_xlabel('Дата')
         ax.set_ylabel('Количество записей')
-        
+
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m.%Y'))
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Метки каждую неделю
         ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
-        
+
         plt.xticks(rotation=45, ha='right')
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.tight_layout()
-        
+
         buf = io.BytesIO()
         plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
         plt.close(fig)
         buf.seek(0)
-        
+
         return StreamingResponse(buf, media_type="image/png")
-    
+
     except Exception as e:
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.text(0.5, 0.5, f"Ошибка: {str(e)}", 
+        ax.text(0.5, 0.5, f"Ошибка: {str(e)}",
                 ha='center', va='center', fontsize=12)
         ax.axis('off')
-        
+
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         plt.close(fig)
         buf.seek(0)
         return StreamingResponse(buf, media_type="image/png")
+
 
 async def get_unique_users() -> List[str]:
     result = es.search(index="activity", body={
@@ -1114,9 +1147,10 @@ async def get_unique_users() -> List[str]:
     })
     return [bucket["key"] for bucket in result["aggregations"]["unique_users"]["buckets"]]
 
+
 async def get_user_activity(username: str) -> dict:
     start_date = date.today().replace(month=1, day=1).strftime('%Y-%m-%d')
-    
+
     query = {
         "query": {
             "bool": {
@@ -1142,14 +1176,14 @@ async def get_user_activity(username: str) -> dict:
         },
         "size": 0
     }
-    
+
     result = es.search(index="activity", body=query)
-    
+
     days = []
     counts = []
-    
+
     for bucket in result["aggregations"]["activity_by_day"]["buckets"]:
         days.append(bucket["key_as_string"][:10])
         counts.append(bucket["doc_count"])
-    print(days,counts)
+    print(days, counts)
     return {"days": days, "counts": counts, "username": username}

@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, Boolean, Text, Date
-from datetime import date
+from sqlalchemy import Column, Integer, Boolean, Text, Date, DateTime
+from datetime import date, datetime
 from pathlib import Path
 
 from application.database import Base
@@ -29,3 +29,13 @@ class ImportedFiles(Base):
     __tablename__ = 'imported'
     id = Column(Integer, primary_key=True)
     file_name = Column(Text, default="")
+
+
+class HistoryList(Base):
+    __tablename__ = 'history'
+    id = Column(Integer, primary_key=True)
+    todo_id = Column(Integer)
+    date_event = Column(Date, default=date.today())
+    time_event = Column(DateTime, default=datetime.now())
+    event = Column(Text)
+    fullname = Column(Text, default="user")
