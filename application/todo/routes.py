@@ -1,13 +1,14 @@
 from fastapi.templating import Jinja2Templates
-from fastapi import APIRouter, Request, Depends, status, Form, UploadFile, HTTPException
+from fastapi import APIRouter, Request, Depends, status, Form, UploadFile, HTTPException, Query
 from starlette.responses import RedirectResponse, Response, HTMLResponse, StreamingResponse
 
-from typing import Annotated, List
+from typing import Annotated, List, Dict, Any, Optional
 import io
 import math
 import os
 import random
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+import datetime
 from loguru import logger
 import gitlab
 import pandas as pd
@@ -1187,3 +1188,132 @@ async def get_user_activity(username: str) -> dict:
         counts.append(bucket["doc_count"])
     print(days, counts)
     return {"days": days, "counts": counts, "username": username}
+
+def get_aggregation_data(interval: str) -> List[Dict[str, Any]]:
+    """Получает данные агрегации из Elasticsearch"""
+    query = {
+        "size": 0,
+        "aggs": {
+            "by_interval": {
+                "date_histogram": {
+                    "field": "creation_date",
+                    "calendar_interval": interval,
+                    "format": "yyyy-MM-dd",
+                    "min_doc_count": 1
+                }
+            }
+        }
+    }
+    
+    try:
+        result = es.search(index="todos", body=query)
+        buckets = result["aggregations"]["by_interval"]["buckets"]
+        return [
+            {
+                "interval": bucket["key_as_string"],
+                "doc_count": bucket["doc_count"],
+                "interval_type": interval
+            }
+            for bucket in buckets
+        ]
+    except Exception as e:
+        print(f"Error getting aggregation data: {str(e)}")
+        return []
+
+def get_todos_for_interval(interval: str, date: str) -> List[str]:
+    """Получает ID задач для конкретного интервала"""
+    try:
+        # Для дней - точное совпадение даты
+        if interval == "1d":
+            query = {
+                "query": {
+                    "term": {
+                        "creation_date": date
+                    }
+                },
+                "size": 1000,
+                "_source": False
+            }
+        # Для недель и месяцев - диапазон дат
+        else:
+            start_date = datetime.datetime.strptime(date, "%Y-%m-%d")
+            if interval == "1w":
+                end_date = start_date + datetime.timedelta(days=7)
+            else:  # месяц
+                if start_date.month == 12:
+                    end_date = datetime.datetime(start_date.year + 1, 1, 1)
+                else:
+                    end_date = datetime.datetime(start_date.year, start_date.month + 1, 1)
+            
+            query = {
+                "query": {
+                    "range": {
+                        "creation_date": {
+                            "gte": start_date.strftime("%Y-%m-%d"),
+                            "lt": end_date.strftime("%Y-%m-%d")
+                        }
+                    }
+                },
+                "size": 1000,
+                "_source": False
+            }
+        
+        result = es.search(index="todos", body=query)
+        return [hit["_id"] for hit in result["hits"]["hits"]]
+    except Exception as e:
+        print(f"Error getting todos: {str(e)}")
+        return []
+
+@router.get("/aggregation", response_class=HTMLResponse)
+async def show_aggregation_form(request: Request, database: Session = Depends(get_db), date: Optional[str] = None, interval: Optional[str] = None):
+    """Отображает форму агрегации или результаты"""
+    if date and interval:
+        # Показываем задачи для выбранного интервала
+        ids = get_todos_for_interval(interval, date)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids))
+        return templates.TemplateResponse(
+            "aggregation.html",
+            {
+                "request": request,
+                "show_todos": True,
+                "todos": todos,
+                "selected_date": date,
+                "interval_type": {
+                    "1d": "день",
+                    "1w": "неделя",
+                    "1M": "месяц"
+                }.get(interval, interval)
+            }
+        )
+    else:
+        # Показываем форму выбора интервала
+        return templates.TemplateResponse(
+            "aggregation.html",
+            {
+                "request": request,
+                "show_todos": False
+            }
+        )
+
+@router.post("/aggregation", response_class=HTMLResponse)
+async def show_aggregation_results(
+    request: Request,
+    interval: str = Form(...)
+):
+    """Обрабатывает форму и показывает результаты агрегации"""
+    aggregation_data = get_aggregation_data(interval)
+    
+    return templates.TemplateResponse(
+        "aggregation.html",
+        {
+            "request": request,
+            "show_todos": False,
+            "interval_type": {
+                "1d": "дни",
+                "1w": "недели",
+                "1M": "месяцы"
+            }.get(interval, interval),
+            "aggregation_data": aggregation_data,
+            "raw_interval": interval
+        }
+    )
