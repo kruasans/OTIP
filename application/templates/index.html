@@ -7,7 +7,7 @@
         <textarea id="details_add" name="details" rows="5" placeholder="Введите задачу"></textarea>
         <select name="type" id="type">
             {% for type in types %}
-                <option value="{{ type.value }}">{{ type.value }}</option>
+                <option value="{{ type.tag }}">{{ type.tag }}</option>
             {% endfor %}
         </select>
         <!-- <select name="fullname" id="fullname">
