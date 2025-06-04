@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <h2>Пользовательские теги</h2>
+
+    <div class="container">
+        <h1>Работа с элементами</h1>
+        
+        <div class="input-group">
+            <textarea id="tag_name" name="tag_name" rows="1" placeholder="Введите тег"></textarea><br>
+            <ul id="suggestions" class="autocomplete-suggestions"></ul>
+        </div>
+        
+        <div class="buttons">
+            <button id="createBtn" onclick=create_tag()>Создать</button>
+            <button id="deleteBtn" onclick=delete_tag()>Удалить</button>
+        </div>
+    </div>
+
+    
+    <script>
+        const textarea = document.getElementById("tag_name");
+const suggestionsBox = document.getElementById("suggestions");
+
+textarea.addEventListener("input", async () => {
+    const value = textarea.value;
+    const lastWord = value.split(/\s+/).pop();
+    console.log(value)
+    console.log(lastWord)
+
+    if (lastWord.length < 2) {
+        suggestionsBox.innerHTML = "";
+        return;
+    }
+
+    try {
+        const response = await fetch(`/todo/get_tags?q=${encodeURIComponent(lastWord)}`);
+        const suggestions = await response.json();
+
+        suggestionsBox.innerHTML = "";
+
+        suggestions.forEach(tag => {
+            const li = document.createElement("li");
+            li.textContent = tag;
+            li.addEventListener("click", () => {
+                // заменяем последнее слово на выбранный тег
+                const words = textarea.value.split(/\s+/);
+                words[words.length - 1] = tag;
+                textarea.value = words.join(" ") + "";
+                suggestionsBox.innerHTML = "";
+            });
+            suggestionsBox.appendChild(li);
+        });
+    } catch (error) {
+        console.error("Ошибка при получении тегов:", error);
+    }
+});
+    </script>
+
+{% endblock content %}

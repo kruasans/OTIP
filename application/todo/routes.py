@@ -409,18 +409,24 @@ async def list_todo(request: Request,
     if skip >= count_pages:
         skip_todos = skip = 0
     ids = find_ids_by_tag(type)
+    print(ids)
     todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
         skip_todos).limit(limit)
-    if (date is not None or date == '') and not TodoTags.contains(type) and (text is not None or text == ''):
+    if (date is not None or date == '')  and (text is not None or text == ''):
         ids = find_by_date(date)
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
             skip_todos).limit(limit)
-    if (text is not None or text == '') and not TodoTags.contains(type) and (date is None or date == ''):
+    if (text is not None or text == '') and (date is None or date == ''):
         ids = find_by_text(text)
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
             skip_todos).limit(limit)
-    if (type is None or not TodoTags.contains(type)) and (date is None or date == '') and (text is None or text == ''):
+    if (type is None) and (date is None or date == '') and (text is None or text == ''):
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
+    tags = database.query(models.UsersTags.tag).all()
+    if type is not None:
+        ids = find_ids_by_tag(type)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
+        skip_todos).limit(limit)
     template_response = templates.TemplateResponse("list.html",
                                                    {
                                                        "request": request,
@@ -428,7 +434,7 @@ async def list_todo(request: Request,
                                                        "limit": limit,
                                                        "skip": skip,
                                                        "count_pages": count_pages,
-                                                       "types": TodoTags, "type": type,
+                                                       "types": tags, "type": type,
                                                        "top_10": terms})
     template_response.set_cookie("limit", str(limit))
     template_response.set_cookie("skip", str(skip))
@@ -460,8 +466,6 @@ async def todo_add(request: Request,
                            date_creation=date_creation,
                            date_completion=date_completion)
         database.add(todo)
-        print(todo.id)
-
         database.commit()
         database.add(
             models.HistoryList(todo_id=todo.id,
@@ -469,9 +473,13 @@ async def todo_add(request: Request,
                                fullname=current_user.name))
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=details if details is not None else "", tag=type,
+        indexating_todo(id=todo.id,
+                        name=str(title),
+                        text=details if details is not None else "", tag=type,
                         date_creation=date_creation)
-        todo_activity(id=todo.id, fullname=fullname, date_creation=date_creation)
+        todo_activity(id=todo.id,
+                      fullname=fullname if current_user.name == "admin" else current_user.name,
+                      date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
 
@@ -570,8 +578,9 @@ async def todo_delete(request: Request,
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
-    history = database.query(models.HistoryList).filter(models.HistoryList.todo_id == todo_id)
-    database.delete(history)
+    history = database.query(models.HistoryList).filter(models.HistoryList.todo_id == todo_id).all()
+    for item in history:
+        database.delete(item)
     database.commit()
     deleting_todo(todo_id)
     return {"answer": "ok"}
@@ -1317,3 +1326,67 @@ async def show_aggregation_results(
             "raw_interval": interval
         }
     )
+
+@router.get("/users_tags", response_class=HTMLResponse)
+async def users_tags(request: Request,
+                     database: Session = Depends(get_db)
+                     ):
+    return templates.TemplateResponse(
+        "usersTags.html",
+        {
+            "request": request,
+        }
+    )
+
+@router.post("/create_tag")
+async def create_tag(request: Request,
+                     tag_name: Annotated[str, Form()] = "",
+                     database: Session = Depends(get_db),
+                     current_user: models_login.Users = Depends(get_current_user)
+                     ):
+    if tag_name != "":
+        tag = database.query(models.UsersTags).filter(models.UsersTags.tag == tag_name).count()
+        if tag > 0:
+            return {"answer": "tag exists"}
+        database.add(
+            models.UsersTags(tag=tag_name)   
+        )
+        database.commit()
+        return {"answer": "ok"}
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+@router.delete("/delete_tag")
+async def delete_tag(request: Request,
+                     tag_name: Annotated[str, Form()] = "",
+                     database: Session = Depends(get_db),
+                     current_user: models_login.Users = Depends(get_current_user)
+                     ):
+    print(tag_name)
+    if current_user.name != "admin":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if tag_name != "":
+        tag = database.query(models.UsersTags).filter(models.UsersTags.tag == tag_name).all()
+        print(tag)
+        if len(tag) < 1:
+            return {"answer": "tag  don`t exists"}
+        for item in tag:
+            database.delete(item)
+        database.commit()
+        return {"answer": "ok"}
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+@router.get("/get_tags")
+async def get_tags(request: Request,
+                       q: str = Query(..., min_length=1),
+                       database: Session = Depends(get_db)
+                       ):
+    tags = (
+        database.query(models.UsersTags.tag)
+        .filter(models.UsersTags.tag.ilike(f"%{q}%"))
+        .distinct()
+        .limit(10)
+        .all()
+    )
+    print(tags)
+    return [tag[0] for tag in tags if tag[0]]
