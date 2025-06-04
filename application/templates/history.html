@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+    <h2>История изменений для TODO #{{ todo_id }}</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Дата</th>
+            <th>Время</th>
+            <th>Событие</th>
+            <th>Пользователь</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in history %}
+            <tr>
+                <td>{{ item.todo_id }}</td>
+                <td>{{ item.date_event }}</td>
+                <td>{{ item.time_event.strftime('%H:%M:%S') }}</td>
+                <td>{{ item.event }}</td>
+                <td>{{ item.fullname }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock content %}
