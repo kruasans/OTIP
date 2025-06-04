@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container">
+        {% if show_todos %}
+            <!-- Режим просмотра задач -->
+            <h2>Задачи за {{ interval_type }} {{ selected_date }}</h2>
+            <a href="/todo/aggregation" class="btn btn-secondary back-btn">← Назад к агрегации</a>
+            
+            <div>
+                {% for todo in todos %}
+                    <div class="title">
+                        <div class="text-container">
+                            {% if todo.completed %}
+                                <strike>{{ todo.title }}</strike>
+                            {% else %}
+                                {{ todo.title }}
+                            {% endif %}
+                            <span style="color:green;">{{ todo.type }}</span>
+                            <br>
+                            <span>Источник: {{ todo.source }}</span>
+                            <br>
+                            <span style="color:green;">Дата создания: {{ todo.date_creation }}</span>
+                            <br>
+                            {% if todo.completed == True %}
+                                <span style="color:green;">Дата выполнения: {{ todo.date_completion }} </span>
+                                <br>
+                                <span style="color:green;">Выполнил: {{ todo.fullname }} </span>
+                            {% endif %}
+                        </div>
+                        <input class="completed-btn {% if todo.completed %}completed{% endif %}" type="submit"
+                               name="completed" onclick="change_status('{{ todo.id }}')" 
+                               value="{% if not todo.completed %}Выполнить{% else %}Выполнено{% endif %}">
+                        <small>
+                            <form style="display:inline;" class="form_inline" action="/todo/edit/{{ todo.id }}" method="get">
+                                <input class="edit-btn" type="submit" value="Редактировать">
+                            </form>
+                            <input class="delete-btn" type="button" value="Удалить"
+                                   onclick="ask_and_submit(this, '{{ todo.id }}')">
+                        </small>
+                    </div>
+                {% endfor %}
+            </div>
+            
+        {% else %}
+            <!-- Режим агрегации -->
+            <h2 class="mb-4">Агрегация записей по дате</h2>
+            
+            {% if aggregation_data %}
+                <!-- Форма выбора интервала -->
+                <form method="post" class="mb-4">
+                    <div class="mb-3">
+                        <label for="interval" class="form-label">Интервал агрегации:</label>
+                        <select class="form-select" id="interval" name="interval" required>
+                            <option value="1d" {% if raw_interval == '1d' %}selected{% endif %}>По дням</option>
+                            <option value="1w" {% if raw_interval == '1w' %}selected{% endif %}>По неделям</option>
+                            <option value="1M" {% if raw_interval == '1M' %}selected{% endif %}>По месяцам</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Показать интервалы</button>
+                </form>
+                
+                <!-- Результаты агрегации -->
+                <h3>Результаты по {{ interval_type }}</h3>
+                {% for item in aggregation_data %}
+                    <div class="interval-card">
+                        <div>
+                            <strong>{{ item.interval }}</strong>
+                            <span>{{ item.doc_count }} записей</span>
+                        </div>
+                        <a href="/todo/aggregation?date={{ item.interval }}&interval={{ item.interval_type }}" 
+                           class="btn btn-outline-primary">
+                            Посмотреть
+                        </a>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Первоначальная форма -->
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="interval" class="form-label">Выберите интервал агрегации:</label>
+                        <select class="form-select" id="interval" name="interval" required>
+                            <option value="">-- Выберите интервал --</option>
+                            <option value="1d">По дням</option>
+                            <option value="1w">По неделям</option>
+                            <option value="1M">По месяцам</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Показать интервалы</button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock content %}
