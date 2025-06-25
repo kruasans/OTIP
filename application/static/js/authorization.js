@@ -317,7 +317,8 @@ function load_txt(todo_id) {
             return response.json();
         })
         .then(data => {
-            //location.reload();
+            window.location.href = "/list";
+            location.reload();
         })
         .catch(error => {
             if (error.message == "401") {

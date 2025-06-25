@@ -12,6 +12,7 @@ class Todo(Base):
     id = Column(Integer, primary_key=True)
     title = Column(Text)
     details = Column(Text, default="")
+    details_hash = Column(Text, default="")
     completed = Column(Boolean, default=False)
     type = Column(Text)
     source = Column(Text)
@@ -20,6 +21,8 @@ class Todo(Base):
     fullname = Column(Text, default="user")
     image_path = Column(Text, default= str(Path.cwd() / "application" / "static" / "media" / "Empty.png"))
     hash = Column(Text, default="")
+    text_from_file = Column(Text, default="")
+    text_from_file_hash = Column(Text, default="")
 
     def __repr__(self):
         return f'<Todo {self.id}>'

@@ -21,6 +21,7 @@ import imagehash
 from pathlib import Path
 import markovify
 from markovify.text import ParamError
+import hashlib
 
 from application.database import get_db, Session
 import application.todo.data as data
@@ -140,6 +141,7 @@ async def todo_add(request: Request,
     if title is not None:
         todo = models.Todo(title=title,
                            details=details,
+                           details_hash=hashlib.sha256(details.encode()).hexdigest(),
                            type=type,
                            source=source,
                            fullname=fullname if current_user.name == "admin" else current_user.name,
@@ -185,9 +187,33 @@ async def todo_get(request: Request,
             models.Todo.id != todo.id).all()
         for todo_in in todos:
             other_todos_img.append(todo_in.id)
+
+    ids_todos_hash_text = []
+    ids_todos_hash_text_from_file = []
+    
+    if not todo.details_hash == "":
+        todos_hash_text = database.query(models.Todo).filter(models.Todo.details_hash == todo.details_hash).filter(
+            models.Todo.id != todo.id).all()
+        for todo_in in todos_hash_text:
+            ids_todos_hash_text.append(todo_in.id)
+    if not todo.text_from_file_hash == "":
+        todos_hash_text_from_file = database.query(models.Todo).filter(models.Todo.text_from_file_hash == todo.text_from_file_hash).filter(
+            models.Todo.id != todo.id).all()
+        for todo_in in todos_hash_text_from_file:
+            ids_todos_hash_text_from_file.append(todo_in.id)
+    
+    
     return templates.TemplateResponse("edit.html",
-                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": path,
-                                       "image": True, "fullnames": Users, "other_todos_img": other_todos_img})
+                                      {"request": request, 
+                                       "todo_id": todo_id, 
+                                       "todo": todo, 
+                                       "picture_name": path,
+                                       "image": True, 
+                                       "fullnames": Users, 
+                                       "other_todos_img": other_todos_img,
+                                       "ids_todos_hash_text": ids_todos_hash_text,
+                                       "ids_todos_hash_text_from_file": ids_todos_hash_text_from_file
+                                       })
 
 
 @router.post("/edit/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
@@ -210,8 +236,10 @@ async def todo_edit(
         logger.info(f"Editting todo: {todo}")
         todo.title = title
         todo.details = details
+        todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
         todo.fullname = current_user.name if current_user.name != "admin" else "user"
+
 
         if completed is False:
             todo.date_completion = None
@@ -675,6 +703,11 @@ def load_txt(request: Request,
              ):
     content = file_input_txt.file.read()
     es.editing_text_from_file_todo(todo_id, content.decode('utf-8'))
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is not None:
+        todo.text_from_file = content.decode('utf-8')
+        todo.text_from_file_hash = hashlib.sha256(content).hexdigest()
+        database.commit()
     return {"answer": "ok"}
 
 
