@@ -21,7 +21,6 @@ import imagehash
 from pathlib import Path
 import markovify
 from markovify.text import ParamError
-from elasticsearch import Elasticsearch
 
 from application.database import get_db, Session
 import application.todo.data as data
@@ -29,6 +28,7 @@ import application.todo.models as models
 import application.login.models as models_login
 from application.todo.tags import TodoTags, Users, Source, tags_metadata
 from application.login.oauth2 import get_current_user
+import application.todo.es as es
 
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
@@ -39,321 +39,31 @@ router = APIRouter(
     tags=['Todo'],
 )
 
-es = Elasticsearch(["http://elasticsearch:9200"])
-index_name = "todos"
 
-pipeline_body = {
-    "description": "Replace secret phrases before indexing",
-    "processors": [
-        {
-            "gsub": {
-                "field": "_source.text",
-                "pattern": "(?i)совершенно секретно",
-                "replacement": "не интересссно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.text",
-                "pattern": "(?i)секретно",
-                "replacement": "не интерессно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.text",
-                "pattern": "(?i)для служебного пользования",
-                "replacement": "не интересно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.name",
-                "pattern": "(?i)совершенно секретно",
-                "replacement": "не интересссно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.name",
-                "pattern": "(?i)секретно",
-                "replacement": "не интерессно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.name",
-                "pattern": "(?i)для служебного пользования",
-                "replacement": "не интересно"
-            }
-        }
-    ]
-}
+async def get_todo_list(type: str = None,
+                        date: str = None,
+                        text: str = None) -> list:
+    """Получение заметок по нескольким критериям. Тег, дата, текст (из поля name, text, text_from_file)
 
-es.ingest.put_pipeline(id="secrecy_replacer", body=pipeline_body)
-
-group_names = ["константин", "максим", "артем"]
-
-index_body = {
-    "settings": {
-        "index": {
-            "max_ngram_diff": 7
-        },
-        "analysis": {
-            "filter": {
-                "russian_stop": {
-                    "type": "stop",
-                    "stopwords": "_russian_"
-                },
-                "custom_name_stop": {
-                    "type": "stop",
-                    "stopwords": group_names
-                },
-                "snowball_russian": {
-                    "type": "snowball",
-                    "language": "Russian"
-                }
-            },
-            "analyzer": {
-                "substring_analyzer": {
-                    "type": "custom",
-                    "tokenizer": "ngram_tokenizer",
-                    "filter": ["lowercase"]
-                },
-                "russian_analyzer": {
-                    "type": "custom",
-                    "tokenizer": "standard",
-                    "filter": [
-                        "lowercase",
-                        "russian_stop",
-                        "custom_name_stop",
-                        "snowball_russian"
-                    ]
-                },
-                "word_analyzer": {  # Новый анализатор для статистики
-                    "type": "custom",
-                    "tokenizer": "standard",
-                    "filter": [
-                        "lowercase",
-                        "russian_stop",  # Игнорируем предлоги
-                        "length"  # Отсеиваем короткие слова
-                    ]
-                }
-            },
-            "tokenizer": {
-                "ngram_tokenizer": {
-                    "type": "ngram",
-                    "min_gram": 3,
-                    "max_gram": 10,
-                    "token_chars": ["letter", "digit"]
-                }
-            }
-        }
-    },
-    "mappings": {
-        "properties": {
-            "combined": {
-                "type": "text",
-                "analyzer": "word_analyzer",
-                "fielddata": True,
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "name": {
-                "type": "text",
-                "analyzer": "substring_analyzer",
-                "copy_to": "combined",
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "text": {
-                "type": "text",
-                "analyzer": "substring_analyzer",
-                "copy_to": "combined",
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "text_from_file": {
-                "type": "text",
-                "analyzer": "substring_analyzer",
-                "copy_to": "combined",
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "tag": {
-                "type": "keyword"
-            },
-            "date_creation": {
-                "type": "date"
-            }
-        }
-    }
-}
-mapping = {
-    "mappings": {
-        "properties": {
-            "name": {"type": "text"},
-            "text": {"type": "text"},
-            "tag": {"type": "keyword"},
-            "date_creation": {"type": "date"},
-        }
-    }
-}
-
-activity_mapping = {
-    "mappings": {
-        "properties": {
-            "fullname": {
-                "type": "text",
-                "fields": {
-                    "keyword": {
-                        "type": "keyword"
-                    }
-                }
-            },
-            "date_creation": {
-                "type": "date",
-                "format": "yyyy-MM-dd"
-            }
-        }
-    }
-}
-
-if not es.indices.exists(index="activity"):
-    es.indices.create(index="activity", body=activity_mapping)
-
-if not es.indices.exists(index=index_name):
-    es.indices.create(index=index_name, body=index_body)
-    settings = {
-        "index.default_pipeline": "secrecy_replacer"
-    }
-
-    es.indices.put_settings(index="todos", body=settings)
-
-
-def indexating_todo(id, text, name, tag, date_creation):
-    document = {
-        "name": name,
-        "text": text,
-        "text_from_file": "",
-        "tag": tag,
-        "creation_date": date_creation
-    }
-    response = es.index(
-        index=index_name,
-        id=id,
-        body=document
-    )
-    return response
-
-
-def todo_activity(id, fullname, date_creation):
-    document = {
-        "fullname": fullname,
-        "creation_date": date_creation
-    }
-    response = es.index(
-        index="activity",
-        id=id,
-        body=document
-    )
-    return response
-
-
-def editing_todo(id, name, text):
-    updated_data = {
-        "doc": {
-            "name": name,
-            "text": text
-        }
-    }
-    response = es.update(index=index_name, id=id, body=updated_data)
-    return response
-
-
-def editing_text_from_file_todo(id, text_from_file):
-    updated_data = {
-        "doc": {
-            "text_from_file": text_from_file
-        }
-    }
-    response = es.update(index=index_name, id=id, body=updated_data)
-    return response
-
-
-def deleting_todo(id: int) -> Response:
-    if not es.exists(index=index_name, id=id):
-        return False, f"Документ с ID {id} не существует"
-    return es.delete(index=index_name, id=id)
-
-
-def find_ids_by_tag(tag):
-    query = {
-        "query": {
-            "match": {
-                "tag": str(tag)
-            }
-        }
-    }
-    response = es.search(index=index_name, body=query)
-    l = []
-    for hit in response['hits']['hits']:
-        l.append(hit['_id'])
-    return l
-
-
-def find_by_date(date):
-    l = []
-    try:
-        dt_object = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-        query = {
-            "query": {
-                "range": {
-                    "creation_date": {
-                        "gte": dt_object
-                    }
-                }
-            }
-        }
-        response = es.search(index=index_name, body=query)
-        for hit in response['hits']['hits']:
-            l.append(hit['_id'])
-        return l
-    except ValueError:
+    :param type: Тег для поиска, defaults to None
+    :type type: str, optional
+    :param date: Дата для поиска, defaults to None
+    :type date: str, optional
+    :param text: Текст для поиска по полям name, text, text_from_file, defaults to None
+    :type text: str, optional
+    :return: Заметки, найденные по критериям
+    :rtype: list
+    """
+    ids = []
+    if type is not None and type != '':
+        ids.append(set(es.find_ids_by_tag(type)))
+    if date is not None and date != '':
+        ids.append(set(es.find_by_date(date)))
+    if text is not None and text != '':
+        ids.append(set(es.find_by_text(text)))
+    if not ids:
         return []
-
-
-def find_by_text(text):
-    l = []
-    query = {
-        "query": {
-            "multi_match": {
-                "query": text,
-                "fields": ["name", "text", "text_from_file"]
-            }
-        }
-    }
-    response = es.search(index=index_name, body=query)
-    for hit in response['hits']['hits']:
-        l.append(hit['_id'])
-    return l
-
+    return list(set.intersection(*ids))
 
 @router.get("/list", tags=["Lists"])
 async def list_todo(request: Request,
@@ -363,70 +73,41 @@ async def list_todo(request: Request,
                     skip: str = None,
                     date: str = None,
                     text: str = None):
-    terms = ""
-    try:
-        search_body = {
-            "size": 0,  # Не возвращаем документы
-            "aggs": {
-                "top_words": {
-                    "terms": {
-                        "field": "combined",  # Поле для агрегации
-                        "size": 10,
-                        "order": {"_count": "desc"}  # Сортировка по частоте
-                    }
-                }
-            }
-        }
-        res = es.search(index=index_name, body=search_body)
-        # print(f'res: {res}')
-        terms = res["aggregations"]["top_words"]["buckets"]
-        # terms = res["aggregations"]["top_words"]["buckets"]
-        print(terms)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    if limit is None:
-        if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
-            limit = "5"
-        else:
-            limit = request.cookies.get('limit')
-    elif not limit.isdigit():
-        limit = "5"
-    if skip is None:
-        if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
-            skip = "0"
-        else:
-            skip = request.cookies.get('skip')
-    elif not skip.isdigit():
-        skip = "0"
-    limit, skip = int(limit), int(skip)
-    logger.info("Todo list")
-    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
-        type) else database.query(models.Todo).filter(
-        models.Todo.type == type).count()
-    count_pages = math.ceil(count_todos / limit)
+    """Функция, отвечающая за /list
 
-    skip_todos = limit * skip
-    if skip >= count_pages:
-        skip_todos = skip = 0
-    ids = find_ids_by_tag(type)
-    print(ids)
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-        skip_todos).limit(limit)
-    if (date is not None or date == '')  and (text is not None or text == ''):
-        ids = find_by_date(date)
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-            skip_todos).limit(limit)
-    if (text is not None or text == '') and (date is None or date == ''):
-        ids = find_by_text(text)
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-            skip_todos).limit(limit)
-    if (type is None) and (date is None or date == '') and (text is None or text == ''):
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
+    :param request: Request
+    :type request: Request
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :param type: Тег записи для поиска, defaults to None
+    :type type: str, optional
+    :param limit: Максимально количество записей на странице, defaults to None
+    :type limit: str, optional
+    :param skip: Количество пропущенных страниц, defaults to None
+    :type skip: str, optional
+    :param date: Дата для поиска, defaults to None
+    :type date: str, optional
+    :param text: Текст для поиска, defaults to None
+    :type text: str, optional
+    :return: Страница /list
+    :rtype: 
+    """
+    top_10 = []
+    try:
+        top_10 = es.get_top_10()
+    except Exception as e:
+        logger(f"Error getting aggregation data: {str(e)}")
+        top_10 = []
+    todos = list()
+    if (type is None or type == '') and (date is None or date == '') and (text is None or text == ''):
+        todos = database.query(models.Todo).all()
+    else:
+        ids = await get_todo_list(type = type, date=date, text=text)
+        todos = database.query(models.Todo).filter(models.Todo.id.in_(ids)).order_by(models.Todo.id.desc()).all()
     tags = database.query(models.UsersTags.tag).all()
-    if type is not None:
-        ids = find_ids_by_tag(type)
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-        skip_todos).limit(limit)
+    count_pages = 1
+    skip = "0"
+    limit = str(len(todos))
     template_response = templates.TemplateResponse("list.html",
                                                    {
                                                        "request": request,
@@ -435,7 +116,7 @@ async def list_todo(request: Request,
                                                        "skip": skip,
                                                        "count_pages": count_pages,
                                                        "types": tags, "type": type,
-                                                       "top_10": terms})
+                                                       "top_10": top_10})
     template_response.set_cookie("limit", str(limit))
     template_response.set_cookie("skip", str(skip))
     return template_response
@@ -473,11 +154,11 @@ async def todo_add(request: Request,
                                fullname=current_user.name))
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id,
+        es.indexating_todo(id=todo.id,
                         name=str(title),
                         text=details if details is not None else "", tag=type,
                         date_creation=date_creation)
-        todo_activity(id=todo.id,
+        es.indexating_todo_activity(id=todo.id,
                       fullname=fullname if current_user.name == "admin" else current_user.name,
                       date_creation=date_creation)
         return {"answer": "ok"}
@@ -541,7 +222,7 @@ async def todo_edit(
                                event="edited",
                                fullname=current_user.name))
         database.commit()
-        editing_todo(id=todo_id, name=str(title), text=details)
+        es.editing_todo(id=todo_id, name=str(title), text=details)
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
@@ -582,7 +263,7 @@ async def todo_delete(request: Request,
     for item in history:
         database.delete(item)
     database.commit()
-    deleting_todo(todo_id)
+    es.deleting_todo(todo_id)
     return {"answer": "ok"}
 
 
@@ -631,7 +312,7 @@ async def todo_delete_range(request: Request,
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     for todo in todos:
         database.delete(todo)
-        deleting_todo(todo.id)
+        es.deleting_todo(todo.id)
 
     database.commit()
     return {"answer": "ok"}
@@ -726,7 +407,7 @@ async def generate_20_todo(
         database.add(todo)
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=str(title), tag=type, date_creation=date.today())
+        es.indexating_todo(id=todo.id, name=str(title), text=str(title), tag=type, date_creation=date.today())
     return {"answer", "ok"}
 
 
@@ -849,7 +530,7 @@ async def visualization(request: Request,
 
 
 @router.get("/visualize/{todo_id}", tags=["Files"])
-async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
+async def visualisation_todo(request: Request, todo_id: int, database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
@@ -993,7 +674,7 @@ def load_txt(request: Request,
              current_user: models_login.Users = Depends(get_current_user)
              ):
     content = file_input_txt.file.read()
-    editing_text_from_file_todo(todo_id, content.decode('utf-8'))
+    es.editing_text_from_file_todo(todo_id, content.decode('utf-8'))
     return {"answer": "ok"}
 
 
@@ -1094,14 +775,14 @@ async def extend_detail(request: Request,
 
 @router.get("/activity", response_class=HTMLResponse)
 async def read_root(request: Request):
-    users = await get_unique_users()
+    users = await es.get_unique_users()
     return templates.TemplateResponse("activity.html", {"request": request, "users": users})
 
 
 @router.post("/plot.png")
 async def generate_plot(username: str = Form(...)):
     try:
-        activity_data = await get_user_activity(username)
+        activity_data = await es.get_user_activity(username)
 
         if not activity_data["days"] or not activity_data["counts"]:
             raise ValueError("Нет данных для построения графика")
@@ -1142,143 +823,12 @@ async def generate_plot(username: str = Form(...)):
         buf.seek(0)
         return StreamingResponse(buf, media_type="image/png")
 
-
-async def get_unique_users() -> List[str]:
-    result = es.search(index="activity", body={
-        "size": 0,
-        "aggs": {
-            "unique_users": {
-                "terms": {
-                    "field": "fullname.keyword",
-                    "size": 1000
-                }
-            }
-        }
-    })
-    return [bucket["key"] for bucket in result["aggregations"]["unique_users"]["buckets"]]
-
-
-async def get_user_activity(username: str) -> dict:
-    start_date = date.today().replace(month=1, day=1).strftime('%Y-%m-%d')
-
-    query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {"match": {"fullname.keyword": username}},
-                    {"range": {
-                        "creation_date": {
-                            "gte": start_date,
-                            "lte": "now/d"
-                        }
-                    }}
-                ]
-            }
-        },
-        "aggs": {
-            "activity_by_day": {
-                "date_histogram": {
-                    "field": "creation_date",
-                    "calendar_interval": "day",
-                    "format": "yyyy-MM-dd"
-                }
-            }
-        },
-        "size": 0
-    }
-
-    result = es.search(index="activity", body=query)
-
-    days = []
-    counts = []
-
-    for bucket in result["aggregations"]["activity_by_day"]["buckets"]:
-        days.append(bucket["key_as_string"][:10])
-        counts.append(bucket["doc_count"])
-    print(days, counts)
-    return {"days": days, "counts": counts, "username": username}
-
-def get_aggregation_data(interval: str) -> List[Dict[str, Any]]:
-    """Получает данные агрегации из Elasticsearch"""
-    query = {
-        "size": 0,
-        "aggs": {
-            "by_interval": {
-                "date_histogram": {
-                    "field": "creation_date",
-                    "calendar_interval": interval,
-                    "format": "yyyy-MM-dd",
-                    "min_doc_count": 1
-                }
-            }
-        }
-    }
-    
-    try:
-        result = es.search(index="todos", body=query)
-        buckets = result["aggregations"]["by_interval"]["buckets"]
-        return [
-            {
-                "interval": bucket["key_as_string"],
-                "doc_count": bucket["doc_count"],
-                "interval_type": interval
-            }
-            for bucket in buckets
-        ]
-    except Exception as e:
-        print(f"Error getting aggregation data: {str(e)}")
-        return []
-
-def get_todos_for_interval(interval: str, date: str) -> List[str]:
-    """Получает ID задач для конкретного интервала"""
-    try:
-        # Для дней - точное совпадение даты
-        if interval == "1d":
-            query = {
-                "query": {
-                    "term": {
-                        "creation_date": date
-                    }
-                },
-                "size": 1000,
-                "_source": False
-            }
-        # Для недель и месяцев - диапазон дат
-        else:
-            start_date = datetime.datetime.strptime(date, "%Y-%m-%d")
-            if interval == "1w":
-                end_date = start_date + datetime.timedelta(days=7)
-            else:  # месяц
-                if start_date.month == 12:
-                    end_date = datetime.datetime(start_date.year + 1, 1, 1)
-                else:
-                    end_date = datetime.datetime(start_date.year, start_date.month + 1, 1)
-            
-            query = {
-                "query": {
-                    "range": {
-                        "creation_date": {
-                            "gte": start_date.strftime("%Y-%m-%d"),
-                            "lt": end_date.strftime("%Y-%m-%d")
-                        }
-                    }
-                },
-                "size": 1000,
-                "_source": False
-            }
-        
-        result = es.search(index="todos", body=query)
-        return [hit["_id"] for hit in result["hits"]["hits"]]
-    except Exception as e:
-        print(f"Error getting todos: {str(e)}")
-        return []
-
 @router.get("/aggregation", response_class=HTMLResponse)
 async def show_aggregation_form(request: Request, database: Session = Depends(get_db), date: Optional[str] = None, interval: Optional[str] = None):
     """Отображает форму агрегации или результаты"""
     if date and interval:
         # Показываем задачи для выбранного интервала
-        ids = get_todos_for_interval(interval, date)
+        ids = es.get_todos_for_interval(interval, date)
         todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids))
         return templates.TemplateResponse(
             "aggregation.html",
@@ -1310,7 +860,7 @@ async def show_aggregation_results(
     interval: str = Form(...)
 ):
     """Обрабатывает форму и показывает результаты агрегации"""
-    aggregation_data = get_aggregation_data(interval)
+    aggregation_data = es.get_aggregation_data(interval)
     
     return templates.TemplateResponse(
         "aggregation.html",
@@ -1378,9 +928,9 @@ async def delete_tag(request: Request,
 
 @router.get("/get_tags")
 async def get_tags(request: Request,
-                       q: str = Query(..., min_length=1),
-                       database: Session = Depends(get_db)
-                       ):
+                   q: str = Query(..., min_length=1),
+                   database: Session = Depends(get_db)
+                   ):
     tags = (
         database.query(models.UsersTags.tag)
         .filter(models.UsersTags.tag.ilike(f"%{q}%"))
@@ -1388,5 +938,4 @@ async def get_tags(request: Request,
         .limit(10)
         .all()
     )
-    print(tags)
     return [tag[0] for tag in tags if tag[0]]
