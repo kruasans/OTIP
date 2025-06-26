@@ -1045,6 +1045,7 @@ async def get_tags(request: Request,
 @router.get("/cluster/{count_clusters}")
 async def cluster_texts(request: Request,
                   count_clusters: int,
+                  cluster_type: str = 'def',
                   database: Session = Depends(get_db)):
     """Кластеризация заметок по описанию (details)
 
@@ -1063,12 +1064,18 @@ async def cluster_texts(request: Request,
         todos_details = []
         todos_ids = []
         for todo in todos:
-            todos_details.append(todo.details)
-            todos_ids.append(todo.id)
-        todos_clusters = await clusterization.clusterization_texts(texts=todos_details,
-                                                                ids=todos_ids,
-                                                                count_clusters=count_clusters)
-        clusters_full = await clusterization.group_clustered_todos(todos_clusters, todos)
+                todos_details.append(todo.details)
+                todos_ids.append(todo.id)
+        if cluster_type == 'def':
+            todos_clusters = await clusterization.clusterization_texts(texts=todos_details,
+                                                                    ids=todos_ids,
+                                                                    count_clusters=count_clusters)
+            clusters_full = await clusterization.group_clustered_todos(todos_clusters, todos)
+        elif cluster_type == 'llm':
+            clusters_full = await llm.cluster_todos_llm_only(texts=todos_details,
+                                                       ids=todos_ids,
+                                                       todos=todos,
+                                                       count_clusters=count_clusters)
 
     return templates.TemplateResponse(
             "clusterization.html",
