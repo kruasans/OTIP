@@ -4,7 +4,7 @@
     <div class="task">
         <h2>Заголовок задачи</h2>
     </div>
-    <textarea id="title" name="title" rows="3">{{ todo.title }}</textarea>
+    <textarea id="title" name="title" rows="3">{{ todo.title }}</textarea> <span>LLM-заголовок: {{ todo.title_llm }}</span>
     <textarea id="details" name="details" rows="5">{{ todo.details }}</textarea>
     <button type="submit" onclick="extend({{ todo_id }})">Дополнить</button>
     <form style="display:inline;" class="form_inline" action="/todo/history/{{ todo.id }}" method="get">
@@ -72,7 +72,7 @@
     </div>
     <div class="column">
       <h2>Реферирование LLM</h2>
-      <p></p>
+      <p>{{ todo.summarization_llm }}</p>
     </div>
   </div>
   
