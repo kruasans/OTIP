@@ -32,6 +32,8 @@ from application.login.oauth2 import get_current_user
 import application.todo.es as es
 import application.todo.summarization_stat as summarization_stat
 import application.todo.clusterization as clusterization
+import application.todo.llm as llm
+
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
 templates = Jinja2Templates(directory="/application/templates")
@@ -166,6 +168,7 @@ async def todo_add(request: Request,
     """
     if title is not None:
         todo = models.Todo(title=title,
+                           title_llm=await llm.generate_title(details=details) if details is not None else "",
                            details=details,
                            details_hash=hashlib.sha256(details.encode()).hexdigest() if details is not None else "",
                            type=type,
@@ -263,11 +266,12 @@ async def todo_edit(
         todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
         logger.info(f"Editting todo: {todo}")
         todo.title = title
+        todo.title_llm=await llm.generate_title(details=details) if details is not None else ""
         todo.details = details
         todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
         todo.fullname = current_user.name if current_user.name != "admin" else "user"
-        todo.summarization_stat = summarization_stat.summarize_with_tfidf(details)
+        todo.summarization_stat = await summarization_stat.summarize_with_tfidf(details)
 
         if completed is False:
             todo.date_completion = None

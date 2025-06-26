@@ -45,6 +45,7 @@
                     {% else %}
                         {{ todo.title }}
                     {% endif %}
+                    <span>LLM-заголовок: {{ todo.title_llm }}</span>
                     <span style="color:green;">{{ todo.type }}</span>
                     <br>
                     <span>Источник: {{ todo.source }}</span>

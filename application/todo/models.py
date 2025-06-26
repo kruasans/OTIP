@@ -11,6 +11,7 @@ class Todo(Base):
     __tablename__ = 'todos'
     id = Column(Integer, primary_key=True)
     title = Column(Text)
+    title_llm = Column(Text, default="")
     details = Column(Text, default="")
     details_hash = Column(Text, default="")
     completed = Column(Boolean, default=False)
@@ -24,6 +25,7 @@ class Todo(Base):
     text_from_file = Column(Text, default="")
     text_from_file_hash = Column(Text, default="")
     summarization_stat = Column(Text, default="")
+    summarization_llm = Column(Text, default="")
 
     def __repr__(self):
         return f'<Todo {self.id}>'
