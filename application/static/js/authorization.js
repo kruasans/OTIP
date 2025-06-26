@@ -2,6 +2,7 @@ function add_todo() {
     formData = new FormData()
     formData.append("title", document.getElementById('title_add').value)
     formData.append("details", document.getElementById('details_add').value)
+    console.log(document.getElementById('details_add').value)
     formData.append("type", document.getElementById('type').value)
     formData.append("fullname", document.getElementById('fullname').value)
     fetch(`/todo/add`, {
