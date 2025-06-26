@@ -21,6 +21,19 @@
         {% endfor %}
     </select> -->
     <div>
+        Дубликаты по полю "details": <br>
+        {% for other_id in ids_todos_hash_text %}
+            <li><a href="/todo/edit/{{ other_id }}">{{ other_id }}</a></li>
+        {% endfor %}
+    </div>
+    <br>
+    <div>
+        Дубликаты по прикреплённому файлу: <br>
+        {% for other_id in ids_todos_hash_text_from_file %}
+            <li><a href="/todo/edit/{{ other_id }}">{{ other_id }}</a></li>
+        {% endfor %}
+    </div>
+    <div>
         <span style=>Владелец: {{ todo.fullname }}</span>
     </div>
     <div>
