@@ -177,8 +177,8 @@ async def todo_add(request: Request,
                            completed=completed,
                            date_creation=date_creation,
                            date_completion=date_completion,
-                           summarization_stat=await summarization_stat.summarize_with_tfidf(details))
-        
+                           summarization_stat=await summarization_stat.summarize(details),
+                           summarization_llm=await llm.summarize(title, details))
         database.add(todo)
         database.commit()
         database.add(
@@ -252,7 +252,7 @@ async def todo_edit(
         request: Request,
         todo_id: int,
         title: Annotated[str, Form(max_length=50)] = None,
-        details: Annotated[str, Form(max_length=500)] = None,
+        details: Annotated[str, Form()] = None,
         completed: bool = Form(False),
         database: Session = Depends(get_db),
         current_user: models_login.Users = Depends(get_current_user)
@@ -271,7 +271,8 @@ async def todo_edit(
         todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
         todo.fullname = current_user.name if current_user.name != "admin" else "user"
-        todo.summarization_stat = await summarization_stat.summarize_with_tfidf(details)
+        todo.summarization_stat = await summarization_stat.summarize(details)
+        todo.summarization_llm = await llm.summarize(title, details)
 
         if completed is False:
             todo.date_completion = None
