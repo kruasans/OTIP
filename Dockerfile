@@ -8,5 +8,8 @@ else \
 	pip install --no-cache-dir --proxy "$PROXY" --upgrade -r /requirements.txt; \
 fi
 
+# Загрузка русской модели spaCy
+RUN python3 -m spacy download ru_core_news_sm
+
 COPY ./application /application
 # RUN chmod +x /application/script/wait-for-it.sh

@@ -30,6 +30,7 @@ import application.login.models as models_login
 from application.todo.tags import TodoTags, Users, Source, tags_metadata
 from application.login.oauth2 import get_current_user
 import application.todo.es as es
+import application.todo.summarization_stat as summarization_stat
 
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
@@ -128,7 +129,7 @@ async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = TodoTags.education.value,
                    source: Annotated[str, Form()] = Source.source_created.value,
-                   details: Annotated[str, Form(max_length=500)] = None,
+                   details: Annotated[str, Form()] = None,
                    fullname: Annotated[str, Form()] = "user",
                    date_creation: Annotated[date, Form()] = date.today(),
                    completed: Annotated[bool, Form()] = False,
@@ -147,7 +148,9 @@ async def todo_add(request: Request,
                            fullname=fullname if current_user.name == "admin" else current_user.name,
                            completed=completed,
                            date_creation=date_creation,
-                           date_completion=date_completion)
+                           date_completion=date_completion,
+                           summarization_stat=await summarization_stat.summarize_with_tfidf(details))
+        
         database.add(todo)
         database.commit()
         database.add(
@@ -239,7 +242,7 @@ async def todo_edit(
         todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
         todo.fullname = current_user.name if current_user.name != "admin" else "user"
-
+        todo.summarization_stat = summarization_stat.summarize_with_tfidf(details)
 
         if completed is False:
             todo.date_completion = None
