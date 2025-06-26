@@ -31,7 +31,7 @@ from application.todo.tags import TodoTags, Users, Source, tags_metadata
 from application.login.oauth2 import get_current_user
 import application.todo.es as es
 import application.todo.summarization_stat as summarization_stat
-
+import application.todo.clusterization as clusterization
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
 templates = Jinja2Templates(directory="/application/templates")
@@ -167,7 +167,7 @@ async def todo_add(request: Request,
     if title is not None:
         todo = models.Todo(title=title,
                            details=details,
-                           details_hash=hashlib.sha256(details.encode()).hexdigest(),
+                           details_hash=hashlib.sha256(details.encode()).hexdigest() if details is not None else "",
                            type=type,
                            source=source,
                            fullname=fullname if current_user.name == "admin" else current_user.name,
@@ -1000,3 +1000,39 @@ async def get_tags(request: Request,
         .all()
     )
     return [tag[0] for tag in tags if tag[0]]
+
+@router.get("/cluster/{count_clusters}")
+async def cluster_texts(request: Request,
+                  count_clusters: int,
+                  database: Session = Depends(get_db)):
+    """Кластеризация заметок по описанию (details)
+
+    :param request: Запрос
+    :type request: Request
+    :param count_clusters: Количество кластеров, defaults to 3
+    :type count_clusters: int, optional
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :return: Страница кластеризации
+    :rtype: _type_
+    """
+    clusters_full = {}
+    todos = database.query(models.Todo).all()
+    if not count_clusters == 0:
+        todos_details = []
+        todos_ids = []
+        for todo in todos:
+            todos_details.append(todo.details)
+            todos_ids.append(todo.id)
+        todos_clusters = await clusterization.clusterization_texts(texts=todos_details,
+                                                                ids=todos_ids,
+                                                                count_clusters=count_clusters)
+        clusters_full = await clusterization.group_clustered_todos(todos_clusters, todos)
+
+    return templates.TemplateResponse(
+            "clusterization.html",
+            {
+                "request": request,
+                "clusters": clusters_full,
+            }
+        )
