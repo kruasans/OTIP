@@ -137,7 +137,32 @@ async def todo_add(request: Request,
                    database: Session = Depends(get_db),
                    current_user: models_login.Users = Depends(get_current_user)
                    ):
-    """Add new todo
+    """Добавляет новую заметку в базу данных и Elastic Search
+
+    :param request: Запрос
+    :type request: Request
+    :param title: Название заметки, defaults to 50)]=None
+    :type title: Annotated[str, Form, optional
+    :param type: Тег заметки, defaults to TodoTags.education.value
+    :type type: Annotated[str, Form, optional
+    :param source: Источник заметки, defaults to Source.source_created.value
+    :type source: Annotated[str, Form, optional
+    :param details: Описание заметки, defaults to None
+    :type details: Annotated[str, Form, optional
+    :param fullname: Имя создателя/исполнителя. Если заметку создавал пользователь, то Исполнитель == создатель. Админ может поставить любого пользователя исполнителем, defaults to "user"
+    :type fullname: Annotated[str, Form, optional
+    :param date_creation: Дата создания, defaults to date.today()
+    :type date_creation: Annotated[date, Form, optional
+    :param completed: Статус. Выполнено или нет, defaults to False
+    :type completed: Annotated[bool, Form, optional
+    :param date_completion: Дата выполнения, defaults to None
+    :type date_completion: Annotated[date, Form, optional
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :param current_user: Аутентифицированный пользователь, defaults to Depends(get_current_user)
+    :type current_user: models_login.Users, optional
+    :return: Если заметка добавилась, то "ok", иначе "title not found"
+    :rtype: _type_
     """
     if title is not None:
         todo = models.Todo(title=title,
