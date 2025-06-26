@@ -29,9 +29,10 @@ async def summarize_with_tfidf(text: str,
     :return: Реферированный текст
     :rtype: str
     """
+    if text is None:
+        return ""
     sentences = await preprocess_sentences(text)
     if len(sentences) <= num_sentences:
-        print(text)
         return text  # если мало предложений — возвращаем как есть
 
     # TF-IDF по предложениям
