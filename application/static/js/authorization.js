@@ -2,7 +2,6 @@ function add_todo() {
     formData = new FormData()
     formData.append("title", document.getElementById('title_add').value)
     formData.append("details", document.getElementById('details_add').value)
-    console.log(document.getElementById('details_add').value)
     formData.append("type", document.getElementById('type').value)
     formData.append("fullname", document.getElementById('fullname').value)
     fetch(`/todo/add`, {
@@ -467,6 +466,47 @@ function generation(count) {
             }
         })
 }
+
+
+function generate_for_cluster(count) {
+    var path = "/todo/generate_for_cluster/";
+    fetch(path, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status !== 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/todo/list";
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                alert("Ошибка авторизации");
+                window.location.href = "/login/log_in";
+            } else if (error.message == "422") {
+                alert("Неверный формат данных");
+                location.reload();
+            } else if (error.message == "409") {
+                alert("Введено число больше 50");
+                window.location.href = "/todo/generator";
+            } else {
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
+
+
 
 function generation_20() {
     var path = "/todo/generate_20/";

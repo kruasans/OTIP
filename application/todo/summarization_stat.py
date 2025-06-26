@@ -18,8 +18,8 @@ async def preprocess_sentences(text: str) -> list:
     sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 10]
     return sentences
 
-async def summarize_with_tfidf(text: str, 
-                         num_sentences: int = 3) -> str:
+async def summarize(text: str, 
+                    num_sentences: int = 3) -> str:
     """Получение реферированного текста из исходного
 
     :param text: Текст, который будет подлежать реферированию

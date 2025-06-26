@@ -32,6 +32,8 @@ from application.login.oauth2 import get_current_user
 import application.todo.es as es
 import application.todo.summarization_stat as summarization_stat
 import application.todo.clusterization as clusterization
+import application.todo.llm as llm
+
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
 templates = Jinja2Templates(directory="/application/templates")
@@ -166,6 +168,7 @@ async def todo_add(request: Request,
     """
     if title is not None:
         todo = models.Todo(title=title,
+                           title_llm=await llm.generate_title(details=details) if details is not None else "",
                            details=details,
                            details_hash=hashlib.sha256(details.encode()).hexdigest() if details is not None else "",
                            type=type,
@@ -174,8 +177,8 @@ async def todo_add(request: Request,
                            completed=completed,
                            date_creation=date_creation,
                            date_completion=date_completion,
-                           summarization_stat=await summarization_stat.summarize_with_tfidf(details))
-        
+                           summarization_stat=await summarization_stat.summarize(details),
+                           summarization_llm=await llm.summarize(title, details))
         database.add(todo)
         database.commit()
         database.add(
@@ -249,7 +252,7 @@ async def todo_edit(
         request: Request,
         todo_id: int,
         title: Annotated[str, Form(max_length=50)] = None,
-        details: Annotated[str, Form(max_length=500)] = None,
+        details: Annotated[str, Form()] = None,
         completed: bool = Form(False),
         database: Session = Depends(get_db),
         current_user: models_login.Users = Depends(get_current_user)
@@ -263,11 +266,13 @@ async def todo_edit(
         todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
         logger.info(f"Editting todo: {todo}")
         todo.title = title
+        todo.title_llm=await llm.generate_title(details=details) if details is not None else ""
         todo.details = details
         todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
         todo.fullname = current_user.name if current_user.name != "admin" else "user"
-        todo.summarization_stat = summarization_stat.summarize_with_tfidf(details)
+        todo.summarization_stat = await summarization_stat.summarize(details)
+        todo.summarization_llm = await llm.summarize(title, details)
 
         if completed is False:
             todo.date_completion = None
@@ -423,6 +428,43 @@ async def generate_todo(
                        source=Source.source_generated.value,
                        fullname="user",
                        details=None,
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer", "ok"}
+
+
+@router.post("/generate_for_cluster", tags=["Generation"])
+async def generate_todo_for_clusters(
+        request: Request,
+        database: Session = Depends(get_db),
+        current_user: models_login.Users = Depends(get_current_user)
+):
+    titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
+              "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар",
+              "закладка",
+              "оскопление", "прибивание"]
+    types = ["Education", "Personal", "Plan"]
+
+    texts = [
+    "Кошки любят спать на солнце.",
+    "Собаки любят гулять с хозяевами.",
+    "Солнечная погода радует всех.",
+    "Собаки лают на незнакомцев.",
+    "Кошки мурлыкают, когда довольны.",
+    "Погода сегодня солнечная и тёплая.",
+    "Хозяева любят своих собак.",
+    "Кошки часто спят на подоконнике."]
+
+    for i in range(0, len(texts)):
+        title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
+        type = types[random.randint(0, 2)]
+        await todo_add(request=request,
+                       title=title,
+                       type=type,
+                       source=Source.source_generated.value,
+                       fullname="user",
+                       details=texts[i],
                        database=database,
                        current_user=current_user
                        )
@@ -1004,6 +1046,7 @@ async def get_tags(request: Request,
 @router.get("/cluster/{count_clusters}")
 async def cluster_texts(request: Request,
                   count_clusters: int,
+                  cluster_type: str = 'def',
                   database: Session = Depends(get_db)):
     """Кластеризация заметок по описанию (details)
 
@@ -1022,12 +1065,18 @@ async def cluster_texts(request: Request,
         todos_details = []
         todos_ids = []
         for todo in todos:
-            todos_details.append(todo.details)
-            todos_ids.append(todo.id)
-        todos_clusters = await clusterization.clusterization_texts(texts=todos_details,
-                                                                ids=todos_ids,
-                                                                count_clusters=count_clusters)
-        clusters_full = await clusterization.group_clustered_todos(todos_clusters, todos)
+                todos_details.append(todo.details)
+                todos_ids.append(todo.id)
+        if cluster_type == 'def':
+            todos_clusters = await clusterization.clusterization_texts(texts=todos_details,
+                                                                    ids=todos_ids,
+                                                                    count_clusters=count_clusters)
+            clusters_full = await clusterization.group_clustered_todos(todos_clusters, todos)
+        elif cluster_type == 'llm':
+            clusters_full = await llm.cluster_todos_llm_only(texts=todos_details,
+                                                       ids=todos_ids,
+                                                       todos=todos,
+                                                       count_clusters=count_clusters)
 
     return templates.TemplateResponse(
             "clusterization.html",
