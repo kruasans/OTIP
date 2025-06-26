@@ -64,5 +64,16 @@
     <button type="submit" onclick="generate_image({{ todo.id }})">Сгенерировать</button>
     <br>
     <a href="/todo/list?type={{ todo.type }}">{{ todo.type }}</a>
-
+    
+    <div class="container">
+    <div class="column">
+      <h2>Реферирование spaCy</h2>
+      <p>{{ todo.summarization_stat }}</p>
+    </div>
+    <div class="column">
+      <h2>Реферирование LLM</h2>
+      <p></p>
+    </div>
+  </div>
+  
 {% endblock content %}

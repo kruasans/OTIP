@@ -23,6 +23,7 @@ class Todo(Base):
     hash = Column(Text, default="")
     text_from_file = Column(Text, default="")
     text_from_file_hash = Column(Text, default="")
+    summarization_stat = Column(Text, default="")
 
     def __repr__(self):
         return f'<Todo {self.id}>'

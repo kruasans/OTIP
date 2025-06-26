@@ -30,6 +30,7 @@ import application.login.models as models_login
 from application.todo.tags import TodoTags, Users, Source, tags_metadata
 from application.login.oauth2 import get_current_user
 import application.todo.es as es
+import application.todo.summarization_stat as summarization_stat
 
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
@@ -128,7 +129,7 @@ async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = TodoTags.education.value,
                    source: Annotated[str, Form()] = Source.source_created.value,
-                   details: Annotated[str, Form(max_length=500)] = None,
+                   details: Annotated[str, Form()] = None,
                    fullname: Annotated[str, Form()] = "user",
                    date_creation: Annotated[date, Form()] = date.today(),
                    completed: Annotated[bool, Form()] = False,
@@ -136,7 +137,32 @@ async def todo_add(request: Request,
                    database: Session = Depends(get_db),
                    current_user: models_login.Users = Depends(get_current_user)
                    ):
-    """Add new todo
+    """Добавляет новую заметку в базу данных и Elastic Search
+
+    :param request: Запрос
+    :type request: Request
+    :param title: Название заметки, defaults to 50)]=None
+    :type title: Annotated[str, Form, optional
+    :param type: Тег заметки, defaults to TodoTags.education.value
+    :type type: Annotated[str, Form, optional
+    :param source: Источник заметки, defaults to Source.source_created.value
+    :type source: Annotated[str, Form, optional
+    :param details: Описание заметки, defaults to None
+    :type details: Annotated[str, Form, optional
+    :param fullname: Имя создателя/исполнителя. Если заметку создавал пользователь, то Исполнитель == создатель. Админ может поставить любого пользователя исполнителем, defaults to "user"
+    :type fullname: Annotated[str, Form, optional
+    :param date_creation: Дата создания, defaults to date.today()
+    :type date_creation: Annotated[date, Form, optional
+    :param completed: Статус. Выполнено или нет, defaults to False
+    :type completed: Annotated[bool, Form, optional
+    :param date_completion: Дата выполнения, defaults to None
+    :type date_completion: Annotated[date, Form, optional
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :param current_user: Аутентифицированный пользователь, defaults to Depends(get_current_user)
+    :type current_user: models_login.Users, optional
+    :return: Если заметка добавилась, то "ok", иначе "title not found"
+    :rtype: _type_
     """
     if title is not None:
         todo = models.Todo(title=title,
@@ -147,7 +173,9 @@ async def todo_add(request: Request,
                            fullname=fullname if current_user.name == "admin" else current_user.name,
                            completed=completed,
                            date_creation=date_creation,
-                           date_completion=date_completion)
+                           date_completion=date_completion,
+                           summarization_stat=await summarization_stat.summarize_with_tfidf(details))
+        
         database.add(todo)
         database.commit()
         database.add(
@@ -239,7 +267,7 @@ async def todo_edit(
         todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
         todo.fullname = current_user.name if current_user.name != "admin" else "user"
-
+        todo.summarization_stat = summarization_stat.summarize_with_tfidf(details)
 
         if completed is False:
             todo.date_completion = None
