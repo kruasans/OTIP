@@ -429,6 +429,43 @@ async def generate_todo(
     return {"answer", "ok"}
 
 
+@router.post("/generate_for_cluster", tags=["Generation"])
+async def generate_todo_for_clusters(
+        request: Request,
+        database: Session = Depends(get_db),
+        current_user: models_login.Users = Depends(get_current_user)
+):
+    titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
+              "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар",
+              "закладка",
+              "оскопление", "прибивание"]
+    types = ["Education", "Personal", "Plan"]
+
+    texts = [
+    "Кошки любят спать на солнце.",
+    "Собаки любят гулять с хозяевами.",
+    "Солнечная погода радует всех.",
+    "Собаки лают на незнакомцев.",
+    "Кошки мурлыкают, когда довольны.",
+    "Погода сегодня солнечная и тёплая.",
+    "Хозяева любят своих собак.",
+    "Кошки часто спят на подоконнике."]
+
+    for i in range(0, len(texts)):
+        title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
+        type = types[random.randint(0, 2)]
+        await todo_add(request=request,
+                       title=title,
+                       type=type,
+                       source=Source.source_generated.value,
+                       fullname="user",
+                       details=texts[i],
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer", "ok"}
+
+
 @router.post("/generate_20", tags=["Generation"])
 async def generate_20_todo(
         request: Request,
