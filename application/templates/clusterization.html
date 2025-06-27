@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<body>
+    <h1>Кластеры заметок</h1>
+
+    {% for cluster_id, notes in clusters.items() %}
+        <div style="margin-bottom: 30px;">
+            <h2>Кластер {{ cluster_id }}</h2>
+            <ul>
+                {% for note in notes %}
+                    <li>
+                        <strong>ID:</strong> {{ note.id }}<br>
+                        <strong>Заголовок:</strong> {{ note.title }}<br>
+                        <strong>Тип:</strong> {{ note.type }}<br>
+                        <strong>Описание:</strong> {{ note.details }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+</body>
+{% endblock content %}

@@ -63,3 +63,26 @@ function login(){
             }
         })
 }
+
+function registration(){
+    let formData = new FormData()
+    formData.append('username', usernameInput.value)
+    formData.append('password', passwordInput.value)
+    fetch('/login/create_user', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => {
+            if(response.status!==200)
+                throw Error(response.status)
+            return response.json();
+        })
+        .then(data =>{
+            alert("Пользователь создан");
+            location.reload();
+        }
+        )
+        .catch(error => {
+            console.log("in catch")
+        })
+}

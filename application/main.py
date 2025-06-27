@@ -59,8 +59,10 @@ async def home(request: Request,
         todo_models.Todo.completed == True).count()
     count_pro = database.query(todo_models.Todo).filter(todo_models.Todo.fullname == "2021-3-12-pro").filter(
         todo_models.Todo.completed == True).count()
+    tags = database.query(todo_models.UsersTags).all()
+    # print(tags)
     template = templates.TemplateResponse("index.html",
-                                          {"request": request, "types": todo_tags.TodoTags,
+                                          {"request": request, "types": tags,
                                            "fullnames": todo_tags.Users, "cha": count_cha,
                                            "zva": count_zva, "pro": count_pro})
     template.set_cookie("limit", str(limit))
