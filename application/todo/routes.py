@@ -427,7 +427,8 @@ async def generate_todo(
                        type=type,
                        source=Source.source_generated.value,
                        fullname="user",
-                       details=None,
+                       details=title,
+                       date_creation=datetime.datetime(2025, 6, 26, 15, 30, 0),
                        database=database,
                        current_user=current_user
                        )

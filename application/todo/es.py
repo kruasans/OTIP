@@ -502,10 +502,9 @@ def get_aggregation_data(interval: str) -> List[Dict[str, Any]]:
         raise HTTPException(status_code=500)
 
 def get_todos_for_interval(interval: str, date: str) -> List[str]:
-
     """Получае ID задач для конкретного интервала
 
-    :param interval: Тип временного интервала
+    :param interval: Тип временного интервала (День, неделя, месяц)
     :type interval: str
     :param date: Дата
     :type date: str
@@ -527,14 +526,14 @@ def get_todos_for_interval(interval: str, date: str) -> List[str]:
             }
         # Для недель и месяцев - диапазон дат
         else:
-            start_date = datetime.datetime.strptime(date, "%Y-%m-%d")
+            start_date = datetime.strptime(date, "%Y-%m-%d")
             if interval == "1w":
-                end_date = start_date + datetime.timedelta(days=7)
+                end_date = start_date + timedelta(days=7)
             else:  # месяц
                 if start_date.month == 12:
-                    end_date = datetime.datetime(start_date.year + 1, 1, 1)
+                    end_date = datetime(start_date.year + 1, 1, 1)
                 else:
-                    end_date = datetime.datetime(start_date.year, start_date.month + 1, 1)
+                    end_date = datetime(start_date.year, start_date.month + 1, 1)
             
             query = {
                 "query": {

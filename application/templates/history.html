@@ -6,7 +6,6 @@
     <table>
         <thead>
         <tr>
-            <th>ID</th>
             <th>Дата</th>
             <th>Время</th>
             <th>Событие</th>
@@ -16,7 +15,6 @@
         <tbody>
         {% for item in history %}
             <tr>
-                <td>{{ item.todo_id }}</td>
                 <td>{{ item.date_event }}</td>
                 <td>{{ item.time_event.strftime('%H:%M:%S') }}</td>
                 <td>{{ item.event }}</td>
