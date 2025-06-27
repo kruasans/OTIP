@@ -25,11 +25,11 @@ function add_todo() {
         })
         .catch(error => {
             if (error.message == "401") {
-             localStorage.removeItem('token');
-             localStorage.removeItem('username');
+            //  localStorage.removeItem('token');
+            //  localStorage.removeItem('username');
                 alert("Ошибка авторизации");
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/login/log_in";
+            // window.location.href = "/login/log_in";
             } else {
                 alert("Ошибка");
                 console.error('Произошла ошибка:', error);
@@ -57,10 +57,10 @@ function change_status(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
@@ -87,10 +87,10 @@ function delete_entry(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
@@ -107,7 +107,7 @@ function delete_every_todo() {
         },
     })
         .then(response => {
-            console.log("response");
+            console.log("response" + response.status);
             if (response.status != 200)
                 throw new Error(response.status);
             return response.json();
@@ -117,13 +117,13 @@ function delete_every_todo() {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
-                window.location.href = "/";
+                // window.location.href = "/";
             }
         })
 }
@@ -174,7 +174,7 @@ function edit(todo_id) {
     formData.append("title", document.getElementById('title').value);
     formData.append("details", document.getElementById('details').value);
     formData.append("completed", document.getElementById('completed').checked);
-    formData.append("fullname", document.getElementById('fullname').value);
+    // formData.append("fullname", document.getElementById('fullname').value);
     fetch(path, {
         method: "POST",
         body: formData,
@@ -195,10 +195,10 @@ function edit(todo_id) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                window.location.href = "/todo/list";
             } else if (error.message == "422") {
                 alert("Неверный формат данных");
                 window.location.href = "/todo/list";
@@ -209,6 +209,43 @@ function edit(todo_id) {
             }
         })
 }
+
+
+// function history(todo_id) {
+//     var path = "/todo/history/" + todo_id;
+//     fetch(path, {
+//         method: "POST",
+//         headers: {
+//             Authorization: `Bearer ${localStorage.getItem('token')}`
+//         },
+//     })
+//         .then(response => {
+//             console.log("response");
+//             console.log(response);
+//             if (response.status != 200)
+//                 throw new Error(response.status);
+//             return response.json();
+//         })
+//         .then(data => {
+//             console.log(data);
+//             window.location.href = "/todo/list";
+//         })
+//         .catch(error => {
+//             if (error.message == "401") {
+//                 // localStorage.removeItem('token');
+//                 // localStorage.removeItem('username');
+//                 alert("Ошибка авторизации");
+//                 window.location.href = "/todo/list";
+//             } else if (error.message == "422") {
+//                 alert("Неверный формат данных");
+//                 window.location.href = "/todo/list";
+//             } else {
+//                 console.error('Произошла ошибка:', error);
+//                 alert("Ошибка");
+//                 window.location.href = "/";
+//             }
+//         })
+// }
 
 
 function load_image(todo_id) {
@@ -280,7 +317,8 @@ function load_txt(todo_id) {
             return response.json();
         })
         .then(data => {
-            //location.reload();
+            window.location.href = "/list";
+            location.reload();
         })
         .catch(error => {
             if (error.message == "401") {
@@ -429,6 +467,47 @@ function generation(count) {
         })
 }
 
+
+function generate_for_cluster(count) {
+    var path = "/todo/generate_for_cluster/";
+    fetch(path, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            console.log("response");
+            console.log(response);
+            if (response.status !== 200)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            window.location.href = "/todo/list";
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                alert("Ошибка авторизации");
+                window.location.href = "/login/log_in";
+            } else if (error.message == "422") {
+                alert("Неверный формат данных");
+                location.reload();
+            } else if (error.message == "409") {
+                alert("Введено число больше 50");
+                window.location.href = "/todo/generator";
+            } else {
+                console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
+
+
+
 function generation_20() {
     var path = "/todo/generate_20/";
     fetch(path, {
@@ -470,10 +549,10 @@ function delete_todo_in_range(start, end, type) {
         })
         .catch(error => {
             if (error.message == "401") {
-                localStorage.removeItem('token');
-                localStorage.removeItem('username');
+                // localStorage.removeItem('token');
+                // localStorage.removeItem('username');
                 alert("Ошибка авторизации");
-                window.location.href = "/login/log_in";
+                // window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
                 window.location.href = "/";
@@ -507,6 +586,64 @@ function extend(id) {
                 window.location.href = "/login/log_in";
             } else {
                 console.error('Произошла ошибка:', error);
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
+
+function create_tag() {
+    formData = new FormData()
+    console.log(document.getElementById('tag_name').value)
+    formData.append("tag_name", document.getElementById('tag_name').value)
+    fetch(`/todo/create_tag`, {
+        method: "POST",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            if (response.status == 401)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                alert("Ошибка авторизации");
+            } else {
+                alert("Ошибка");
+                window.location.href = "/";
+            }
+        })
+}
+
+function delete_tag() {
+    formData = new FormData()
+    // console.log(document.getElementById('tag_name').value)
+    formData.append("tag_name", document.getElementById('tag_name').value)
+    fetch(`/todo/delete_tag`, {
+        method: "DELETE",
+        body: formData,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+    })
+        .then(response => {
+            if (response.status == 401)
+                throw new Error(response.status);
+            return response.json();
+        })
+        .then(data => {
+            location.reload();
+        })
+        .catch(error => {
+            if (error.message == "401") {
+                alert("Ошибка авторизации");
+            } else {
                 alert("Ошибка");
                 window.location.href = "/";
             }

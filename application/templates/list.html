@@ -9,7 +9,7 @@
             <select name="type" id="type" form="list" class="filter_todo">
                 <option hidden="hidden">Фильтр</option>
                 {% for type in types %}
-                    <option value="{{ type.value }}">{{ type.value }}</option>
+                    <option value="{{ type.tag }}">{{ type.tag }}</option>
                 {% endfor %}
                 <option value="None">Показать все</option>
             </select>
@@ -45,6 +45,7 @@
                     {% else %}
                         {{ todo.title }}
                     {% endif %}
+                    <span>LLM-заголовок: {{ todo.title_llm }}</span>
                     <span style="color:green;">{{ todo.type }}</span>
                     <br>
                     <span>Источник: {{ todo.source }}</span>

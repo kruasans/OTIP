@@ -23,6 +23,8 @@ router = APIRouter(
 async def log_in(request: Request, database: Session = Depends(get_db)):
     if database.query(models.Users).filter(models.Users.name == "user").first() is None:
         await create_user(schems.UserCreate(username="user", password="user"), database)
+    if database.query(models.Users).filter(models.Users.name == "admin").first() is None:
+        await create_user(schems.UserCreate(username="admin", password="admin"), database)
     return templates.TemplateResponse("log_in.html", {"request": request})
 
 
@@ -43,9 +45,15 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), database: 
         'username': user.name
     }
 
+@router.post('/create_user')
+async def log_in(form_data: OAuth2PasswordRequestForm = Depends(), database: Session = Depends(get_db)):
+    if database.query(models.Users).filter(models.Users.name == form_data.username).first() is None:
+        await create_user(schems.UserCreate(username=form_data.username, password=form_data.password), database)
+    return {"answer": "ok"}
 
 async def create_user(form_data: schems.UserCreate, database: Session = Depends(get_db)):
     new_user = models.Users(name=form_data.username, password=HashPassword.bcrypt(form_data.password))
     database.add(new_user)
     database.commit()
     return new_user
+

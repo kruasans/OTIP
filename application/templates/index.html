@@ -7,14 +7,15 @@
         <textarea id="details_add" name="details" rows="5" placeholder="Введите задачу"></textarea>
         <select name="type" id="type">
             {% for type in types %}
-                <option value="{{ type.value }}">{{ type.value }}</option>
+                <option value="{{ type.tag }}">{{ type.tag }}</option>
             {% endfor %}
         </select>
-        <select name="fullname" id="fullname">
+        <!-- <select name="fullname" id="fullname">
             {% for fullname in fullnames %}
                 <option value="{{ fullname.value }}">{{ fullname.value }}</option>
             {% endfor %}
-        </select>
+        </select> -->
+        <input type="text" id="fullname" placeholder="fullname">
         <button id="add_new_todo" onclick="add_todo()" type="submit">Добавить</button>
 <!--    </form>-->
 

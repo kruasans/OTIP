@@ -1,26 +1,27 @@
 from fastapi.templating import Jinja2Templates
-from fastapi import APIRouter, Request, Depends, status, Form, UploadFile, HTTPException
-from starlette.responses import RedirectResponse, Response
+from fastapi import APIRouter, Request, Depends, status, Form, UploadFile, HTTPException, Query
+from starlette.responses import RedirectResponse, Response, HTMLResponse, StreamingResponse
 
-from typing import Annotated
+from typing import Annotated, List, Dict, Any, Optional
 import io
 import math
 import os
 import random
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import datetime
 from loguru import logger
 import gitlab
 import pandas as pd
 from gitlab import GitlabAuthenticationError
 from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
 from wordcloud import WordCloud
 from PIL import Image
 import imagehash
 from pathlib import Path
 import markovify
 from markovify.text import ParamError
-from elasticsearch import Elasticsearch
+import hashlib
 
 from application.database import get_db, Session
 import application.todo.data as data
@@ -28,6 +29,10 @@ import application.todo.models as models
 import application.login.models as models_login
 from application.todo.tags import TodoTags, Users, Source, tags_metadata
 from application.login.oauth2 import get_current_user
+import application.todo.es as es
+import application.todo.summarization_stat as summarization_stat
+import application.todo.clusterization as clusterization
+import application.todo.llm as llm
 
 logger = logger.opt(colors=True)
 # pylint: disable=invalid-name
@@ -38,285 +43,31 @@ router = APIRouter(
     tags=['Todo'],
 )
 
-es = Elasticsearch(["http://elasticsearch:9200"])
-index_name = "todos"
 
-pipeline_body = {
-    "description": "Replace secret phrases before indexing",
-    "processors": [
-        {
-            "gsub": {
-                "field": "_source.text",
-                "pattern": "(?i)совершенно секретно",
-                "replacement": "не интересссно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.text",
-                "pattern": "(?i)секретно",
-                "replacement": "не интерессно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.text",
-                "pattern": "(?i)для служебного пользования",
-                "replacement": "не интересно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.name",
-                "pattern": "(?i)совершенно секретно",
-                "replacement": "не интересссно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.name",
-                "pattern": "(?i)секретно",
-                "replacement": "не интерессно"
-            }
-        },
-        {
-            "gsub": {
-                "field": "_source.name",
-                "pattern": "(?i)для служебного пользования",
-                "replacement": "не интересно"
-            }
-        }
-    ]
-}
+async def get_todo_list(type: str = None,
+                        date: str = None,
+                        text: str = None) -> list:
+    """Получение заметок по нескольким критериям. Тег, дата, текст (из поля name, text, text_from_file)
 
-es.ingest.put_pipeline(id="secrecy_replacer", body=pipeline_body)
-
-group_names = ["константин", "максим", "артем"]
-
-index_body = {
-    "settings": {
-        "index": {
-            "max_ngram_diff": 7
-        },
-        "analysis": {
-            "filter": {
-                "russian_stop": {
-                    "type": "stop",
-                    "stopwords": "_russian_"
-                },
-                "custom_name_stop": {
-                    "type": "stop",
-                    "stopwords": group_names
-                },
-                "snowball_russian": {
-                    "type": "snowball",
-                    "language": "Russian"
-                }
-            },
-            "analyzer": {
-                "substring_analyzer": {
-                    "type": "custom",
-                    "tokenizer": "ngram_tokenizer",
-                    "filter": ["lowercase"]
-                },
-                "russian_analyzer": {
-                    "type": "custom",
-                    "tokenizer": "standard",
-                    "filter": [
-                        "lowercase",
-                        "russian_stop",
-                        "custom_name_stop",
-                        "snowball_russian"
-                    ]
-                },
-                "word_analyzer": {  # Новый анализатор для статистики
-                    "type": "custom",
-                    "tokenizer": "standard",
-                    "filter": [
-                        "lowercase",
-                        "russian_stop",  # Игнорируем предлоги
-                        "length"         # Отсеиваем короткие слова
-                    ]
-                }
-            },
-            "tokenizer": {
-                "ngram_tokenizer": {
-                    "type": "ngram",
-                    "min_gram": 3,
-                    "max_gram": 10,
-                    "token_chars": ["letter", "digit"]
-                }
-            }
-        }
-    },
-    "mappings": {
-        "properties": {
-            "combined": {
-                "type": "text",
-                "analyzer": "word_analyzer",
-                "fielddata": True,
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "name": {
-                "type": "text",
-                "analyzer": "substring_analyzer",
-                "copy_to": "combined",
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "text": {
-                "type": "text",
-                "analyzer": "substring_analyzer",
-                "copy_to": "combined",
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "text_from_file": {
-                "type": "text",
-                "analyzer": "substring_analyzer",
-                "copy_to": "combined",
-                "fields": {
-                    "russian": {
-                        "type": "text",
-                        "analyzer": "russian_analyzer"
-                    }
-                }
-            },
-            "tag": {
-                "type": "keyword"
-            },
-            "date_creation": {
-                "type": "date"
-            }
-        }
-    }
-}
-mapping = {
-    "mappings": {
-        "properties": {
-            "name": {"type": "text"},
-            "text": {"type": "text"},
-            "tag": {"type": "keyword"},
-            "date_creation": {"type": "date"},
-        }
-    }
-}
-
-if not es.indices.exists(index=index_name):
-    es.indices.create(index=index_name, body=index_body)
-    settings = {
-        "index.default_pipeline": "secrecy_replacer"
-    }
-
-    es.indices.put_settings(index="todos", body=settings)
-
-
-def indexating_todo(id, text, name, tag, date_creation):
-    document = {
-        "name": name,
-        "text": text,
-        "text_from_file":"",
-        "tag": tag,
-        "creation_date": date_creation
-    }
-    response = es.index(
-        index=index_name,
-        id=id,
-        body=document
-    )
-    return response
-
-
-def editing_todo(id, name, text):
-    updated_data = {
-        "doc": {
-            "name": name,
-            "text": text
-        }
-    }
-    response = es.update(index=index_name, id=id, body=updated_data)
-    return response
-
-def editing_text_from_file_todo(id, text_from_file):
-    updated_data = {
-        "doc": {
-            "text_from_file": text_from_file
-        }
-    }
-    response = es.update(index=index_name, id=id, body=updated_data)
-    return response
-
-
-def deleting_todo(id: int) -> Response:
-    if not es.exists(index=index_name, id=id):
-        return False, f"Документ с ID {id} не существует"
-    return es.delete(index=index_name, id=id)
-
-
-def find_ids_by_tag(tag):
-    query = {
-        "query": {
-            "match": {
-                "tag": str(tag)
-            }
-        }
-    }
-    response = es.search(index=index_name, body=query)
-    l = []
-    for hit in response['hits']['hits']:
-        l.append(hit['_id'])
-    return l
-
-
-def find_by_date(date):
-    l = []
-    try:
-        dt_object = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-        query = {
-            "query": {
-                "range": {
-                    "creation_date": {
-                        "gte": dt_object
-                    }
-                }
-            }
-        }
-        response = es.search(index=index_name, body=query)
-        for hit in response['hits']['hits']:
-            l.append(hit['_id'])
-        return l
-    except ValueError:
+    :param type: Тег для поиска, defaults to None
+    :type type: str, optional
+    :param date: Дата для поиска, defaults to None
+    :type date: str, optional
+    :param text: Текст для поиска по полям name, text, text_from_file, defaults to None
+    :type text: str, optional
+    :return: Заметки, найденные по критериям
+    :rtype: list
+    """
+    ids = []
+    if type is not None and type != '':
+        ids.append(set(es.find_ids_by_tag(type)))
+    if date is not None and date != '':
+        ids.append(set(es.find_by_date(date)))
+    if text is not None and text != '':
+        ids.append(set(es.find_by_text(text)))
+    if not ids:
         return []
-
-
-def find_by_text(text):
-    l = []
-    query = {
-        "query": {
-            "multi_match": {
-                "query": text,
-                "fields": ["name", "text", "text_from_file"]
-            }
-        }
-    }
-    response = es.search(index=index_name, body=query)
-    for hit in response['hits']['hits']:
-        l.append(hit['_id'])
-    return l
-
+    return list(set.intersection(*ids))
 
 @router.get("/list", tags=["Lists"])
 async def list_todo(request: Request,
@@ -326,65 +77,41 @@ async def list_todo(request: Request,
                     skip: str = None,
                     date: str = None,
                     text: str = None):
-    terms = ""
-    try:
-        search_body = {
-            "size": 0,  # Не возвращаем документы
-            "aggs": {
-                "top_words": {
-                    "terms": {
-                        "field": "combined",  # Поле для агрегации
-                        "size": 10,
-                        "order": {"_count": "desc"}  # Сортировка по частоте
-                    }
-                }
-            }
-        }
-        res = es.search(index=index_name, body=search_body)
-        # print(f'res: {res}')
-        terms = res["aggregations"]["top_words"]["buckets"]
-        # terms = res["aggregations"]["top_words"]["buckets"]
-        print(terms)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    if limit is None:
-        if request.cookies.get('limit') is None or not request.cookies.get('limit').isdigit():
-            limit = "5"
-        else:
-            limit = request.cookies.get('limit')
-    elif not limit.isdigit():
-        limit = "5"
-    if skip is None:
-        if request.cookies.get('skip') is None or not request.cookies.get('skip').isdigit():
-            skip = "0"
-        else:
-            skip = request.cookies.get('skip')
-    elif not skip.isdigit():
-        skip = "0"
-    limit, skip = int(limit), int(skip)
-    logger.info("Todo list")
-    count_todos = database.query(models.Todo).count() if type is None or not TodoTags.contains(
-        type) else database.query(models.Todo).filter(
-        models.Todo.type == type).count()
-    count_pages = math.ceil(count_todos / limit)
+    """Функция, отвечающая за /list
 
-    skip_todos = limit * skip
-    if skip >= count_pages:
-        skip_todos = skip = 0
-    ids = find_ids_by_tag(type)
-    todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-        skip_todos).limit(limit)
-    if (date is not None or date == '') and not TodoTags.contains(type) and (text is not None or text == ''):
-        ids = find_by_date(date)
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-            skip_todos).limit(limit)
-    if (text is not None or text == '') and not TodoTags.contains(type) and (date is None or date == ''):
-        ids = find_by_text(text)
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids)).offset(
-            skip_todos).limit(limit)
-    if (type is None or not TodoTags.contains(type)) and (date is None or date == '') and (text is None or text == ''):
-        logger.info("hui blyat")
-        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).offset(skip_todos).limit(limit)
+    :param request: Request
+    :type request: Request
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :param type: Тег записи для поиска, defaults to None
+    :type type: str, optional
+    :param limit: Максимально количество записей на странице, defaults to None
+    :type limit: str, optional
+    :param skip: Количество пропущенных страниц, defaults to None
+    :type skip: str, optional
+    :param date: Дата для поиска, defaults to None
+    :type date: str, optional
+    :param text: Текст для поиска, defaults to None
+    :type text: str, optional
+    :return: Страница /list
+    :rtype: 
+    """
+    top_10 = []
+    try:
+        top_10 = es.get_top_10()
+    except Exception as e:
+        logger(f"Error getting aggregation data: {str(e)}")
+        top_10 = []
+    todos = list()
+    if (type is None or type == '') and (date is None or date == '') and (text is None or text == ''):
+        todos = database.query(models.Todo).all()
+    else:
+        ids = await get_todo_list(type = type, date=date, text=text)
+        todos = database.query(models.Todo).filter(models.Todo.id.in_(ids)).order_by(models.Todo.id.desc()).all()
+    tags = database.query(models.UsersTags.tag).all()
+    count_pages = 1
+    skip = "0"
+    limit = str(len(todos))
     template_response = templates.TemplateResponse("list.html",
                                                    {
                                                        "request": request,
@@ -392,8 +119,8 @@ async def list_todo(request: Request,
                                                        "limit": limit,
                                                        "skip": skip,
                                                        "count_pages": count_pages,
-                                                       "types": TodoTags, "type": type,
-                                                       "top_10": terms})
+                                                       "types": tags, "type": type,
+                                                       "top_10": top_10})
     template_response.set_cookie("limit", str(limit))
     template_response.set_cookie("skip", str(skip))
     return template_response
@@ -404,29 +131,69 @@ async def todo_add(request: Request,
                    title: Annotated[str, Form(max_length=50)] = None,
                    type: Annotated[str, Form()] = TodoTags.education.value,
                    source: Annotated[str, Form()] = Source.source_created.value,
-                   details: Annotated[str, Form(max_length=500)] = None,
-                   fullname: Annotated[str, Form()] = Users.user1.value,
+                   details: Annotated[str, Form()] = None,
+                   fullname: Annotated[str, Form()] = "user",
                    date_creation: Annotated[date, Form()] = date.today(),
                    completed: Annotated[bool, Form()] = False,
                    date_completion: Annotated[date, Form()] = None,
                    database: Session = Depends(get_db),
                    current_user: models_login.Users = Depends(get_current_user)
                    ):
-    """Add new todo
+    """Добавляет новую заметку в базу данных и Elastic Search
+
+    :param request: Запрос
+    :type request: Request
+    :param title: Название заметки, defaults to 50)]=None
+    :type title: Annotated[str, Form, optional
+    :param type: Тег заметки, defaults to TodoTags.education.value
+    :type type: Annotated[str, Form, optional
+    :param source: Источник заметки, defaults to Source.source_created.value
+    :type source: Annotated[str, Form, optional
+    :param details: Описание заметки, defaults to None
+    :type details: Annotated[str, Form, optional
+    :param fullname: Имя создателя/исполнителя. Если заметку создавал пользователь, то Исполнитель == создатель. Админ может поставить любого пользователя исполнителем, defaults to "user"
+    :type fullname: Annotated[str, Form, optional
+    :param date_creation: Дата создания, defaults to date.today()
+    :type date_creation: Annotated[date, Form, optional
+    :param completed: Статус. Выполнено или нет, defaults to False
+    :type completed: Annotated[bool, Form, optional
+    :param date_completion: Дата выполнения, defaults to None
+    :type date_completion: Annotated[date, Form, optional
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :param current_user: Аутентифицированный пользователь, defaults to Depends(get_current_user)
+    :type current_user: models_login.Users, optional
+    :return: Если заметка добавилась, то "ok", иначе "title not found"
+    :rtype: _type_
     """
     if title is not None:
         todo = models.Todo(title=title,
+                           title_llm=await llm.generate_title(details=details) if details is not None else "",
                            details=details,
+                           details_hash=hashlib.sha256(details.encode()).hexdigest() if details is not None else "",
                            type=type,
                            source=source,
-                           fullname=fullname,
+                           fullname=fullname if current_user.name == "admin" else current_user.name,
                            completed=completed,
                            date_creation=date_creation,
-                           date_completion=date_completion)
+                           date_completion=date_completion,
+                           summarization_stat=await summarization_stat.summarize(details),
+                           summarization_llm=await llm.summarize(title, details))
         database.add(todo)
         database.commit()
+        database.add(
+            models.HistoryList(todo_id=todo.id,
+                               event="created",
+                               fullname=current_user.name))
+        database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=details if details is not None else "", tag=type, date_creation=date_creation)
+        es.indexating_todo(id=todo.id,
+                        name=str(title),
+                        text=details if details is not None else "", tag=type,
+                        date_creation=date_creation)
+        es.indexating_todo_activity(id=todo.id,
+                      fullname=fullname if current_user.name == "admin" else current_user.name,
+                      date_creation=date_creation)
         return {"answer": "ok"}
     return {"answer": "title not found"}
 
@@ -451,9 +218,33 @@ async def todo_get(request: Request,
             models.Todo.id != todo.id).all()
         for todo_in in todos:
             other_todos_img.append(todo_in.id)
+
+    ids_todos_hash_text = []
+    ids_todos_hash_text_from_file = []
+    
+    if not todo.details_hash == "":
+        todos_hash_text = database.query(models.Todo).filter(models.Todo.details_hash == todo.details_hash).filter(
+            models.Todo.id != todo.id).all()
+        for todo_in in todos_hash_text:
+            ids_todos_hash_text.append(todo_in.id)
+    if not todo.text_from_file_hash == "":
+        todos_hash_text_from_file = database.query(models.Todo).filter(models.Todo.text_from_file_hash == todo.text_from_file_hash).filter(
+            models.Todo.id != todo.id).all()
+        for todo_in in todos_hash_text_from_file:
+            ids_todos_hash_text_from_file.append(todo_in.id)
+    
+    
     return templates.TemplateResponse("edit.html",
-                                      {"request": request, "todo_id": todo_id, "todo": todo, "picture_name": path,
-                                       "image": True, "fullnames": Users, "other_todos_img": other_todos_img})
+                                      {"request": request, 
+                                       "todo_id": todo_id, 
+                                       "todo": todo, 
+                                       "picture_name": path,
+                                       "image": True, 
+                                       "fullnames": Users, 
+                                       "other_todos_img": other_todos_img,
+                                       "ids_todos_hash_text": ids_todos_hash_text,
+                                       "ids_todos_hash_text_from_file": ids_todos_hash_text_from_file
+                                       })
 
 
 @router.post("/edit/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
@@ -461,9 +252,8 @@ async def todo_edit(
         request: Request,
         todo_id: int,
         title: Annotated[str, Form(max_length=50)] = None,
-        details: Annotated[str, Form(max_length=500)] = None,
+        details: Annotated[str, Form()] = None,
         completed: bool = Form(False),
-        fullname: Annotated[str, Form()] = "2021-3-26-cha",
         database: Session = Depends(get_db),
         current_user: models_login.Users = Depends(get_current_user)
 ):
@@ -471,21 +261,48 @@ async def todo_edit(
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is not None and title is not None and title.replace(" ", "") != "":
+        if current_user.name != todo.fullname and current_user.name != "admin":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
         logger.info(f"Editting todo: {todo}")
         todo.title = title
+        todo.title_llm=await llm.generate_title(details=details) if details is not None else ""
         todo.details = details
+        todo.details_hash = hashlib.sha256(details.encode()).hexdigest()
         todo.completed = completed
-        todo.fullname = fullname
+        todo.fullname = current_user.name if current_user.name != "admin" else "user"
+        todo.summarization_stat = await summarization_stat.summarize(details)
+        todo.summarization_llm = await llm.summarize(title, details)
 
         if completed is False:
             todo.date_completion = None
         else:
             todo.date_completion = date.today()
+        database.add(
+            models.HistoryList(todo_id=todo.id,
+                               event="edited",
+                               fullname=current_user.name))
         database.commit()
-        editing_todo(id=todo_id, name=str(title), text=details)
+        es.editing_todo(id=todo_id, name=str(title), text=details)
         return {"answer": "ok"}
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+@router.get("/history/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
+async def todo_history(
+        request: Request,
+        todo_id: int,
+        database: Session = Depends(get_db)
+):
+    # Получаем все записи истории для указанного todo_id
+    history = (
+        database.query(models.HistoryList)
+        .filter(models.HistoryList.todo_id == todo_id)
+        .order_by(models.HistoryList.time_event.desc())
+        .all()
+    )
+    templates_response = templates.TemplateResponse("history.html", {"request": request, "todo_id": todo_id, "history": history})
+    return templates_response
 
 
 @router.delete("/delete/{todo_id}", tags=["Todo"])
@@ -499,10 +316,15 @@ async def todo_delete(request: Request,
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is None:
         raise HTTPException(status_code=301)
+    if current_user.name != todo.fullname and current_user.name != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     logger.info(f"Deleting todo: {todo}")
     database.delete(todo)
+    history = database.query(models.HistoryList).filter(models.HistoryList.todo_id == todo_id).all()
+    for item in history:
+        database.delete(item)
     database.commit()
-    deleting_todo(todo_id)
+    es.deleting_todo(todo_id)
     return {"answer": "ok"}
 
 
@@ -513,10 +335,13 @@ async def todo_delete_all(request: Request,
                           ):
     """Delete all todos"""
     all_todos = database.query(models.Todo).all()
+    if current_user.name != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     for todo in all_todos:
         await todo_delete(request=request,
                           todo_id=todo.id,
-                          database=database)
+                          database=database,
+                          current_user=current_user)
     return {"answer": "ok"}
 
 
@@ -544,10 +369,11 @@ async def todo_delete_range(request: Request,
 
     # todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.type == type).all()
     todos = query.order_by(models.Todo.id.desc()).offset(start - 1).limit(end - start + 1)
-
+    if current_user.name != "admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     for todo in todos:
         database.delete(todo)
-        deleting_todo(todo.id)
+        es.deleting_todo(todo.id)
 
     database.commit()
     return {"answer": "ok"}
@@ -563,6 +389,8 @@ async def todo_change_status(request: Request,
     """
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
     if todo is not None:
+        if current_user.name != todo.fullname and current_user.name != "admin":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         if todo.completed is True:
             todo.completed = False
             todo.date_completion = None
@@ -598,7 +426,45 @@ async def generate_todo(
                        title=title,
                        type=type,
                        source=Source.source_generated.value,
+                       fullname="user",
                        details=None,
+                       database=database,
+                       current_user=current_user
+                       )
+    return {"answer", "ok"}
+
+
+@router.post("/generate_for_cluster", tags=["Generation"])
+async def generate_todo_for_clusters(
+        request: Request,
+        database: Session = Depends(get_db),
+        current_user: models_login.Users = Depends(get_current_user)
+):
+    titles = ["пахтальщик", "шкипер", "усвоение", "недовыручка", "печение", "двухголосие", "уламывание", "решето",
+              "рамщик", "дрожина", "акушер", "грушанка", "маргарин", "хлорофилл", "штатив", "осмий", "повар",
+              "закладка",
+              "оскопление", "прибивание"]
+    types = ["Education", "Personal", "Plan"]
+
+    texts = [
+    "Кошки любят спать на солнце.",
+    "Собаки любят гулять с хозяевами.",
+    "Солнечная погода радует всех.",
+    "Собаки лают на незнакомцев.",
+    "Кошки мурлыкают, когда довольны.",
+    "Погода сегодня солнечная и тёплая.",
+    "Хозяева любят своих собак.",
+    "Кошки часто спят на подоконнике."]
+
+    for i in range(0, len(texts)):
+        title = titles[random.randint(0, 19)] + " " + titles[random.randint(0, 19)]
+        type = types[random.randint(0, 2)]
+        await todo_add(request=request,
+                       title=title,
+                       type=type,
+                       source=Source.source_generated.value,
+                       fullname="user",
+                       details=texts[i],
                        database=database,
                        current_user=current_user
                        )
@@ -632,14 +498,14 @@ async def generate_20_todo(
                            details=title,
                            type=type,
                            source=Source.source_generated.value,
-                           fullname=Users.user1.value,
+                           fullname="user",
                            completed=False,
                            date_creation=date.today(),
                            date_completion=None)
         database.add(todo)
         database.commit()
         logger.info(f"Creating todo: {todo}")
-        indexating_todo(id=todo.id, name=str(title), text=str(title), tag=type, date_creation=date.today())
+        es.indexating_todo(id=todo.id, name=str(title), text=str(title), tag=type, date_creation=date.today())
     return {"answer", "ok"}
 
 
@@ -762,7 +628,7 @@ async def visualization(request: Request,
 
 
 @router.get("/visualize/{todo_id}", tags=["Files"])
-async def vis(request: Request, todo_id: int, database: Session = Depends(get_db)):
+async def visualisation_todo(request: Request, todo_id: int, database: Session = Depends(get_db)):
     todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
 
     wc = WordCloud(width=300, height=300, background_color="white").generate(text=todo.details
@@ -900,16 +766,19 @@ def load_image(request: Request,
 
 @router.post("/load_txt/{todo_id}", status_code=status.HTTP_200_OK, tags=["Todo"])
 def load_txt(request: Request,
-               todo_id: int,
-               file_input_txt: UploadFile = Form(),
-               database: Session = Depends(get_db),
-               current_user: models_login.Users = Depends(get_current_user)
-               ):
+             todo_id: int,
+             file_input_txt: UploadFile = Form(),
+             database: Session = Depends(get_db),
+             current_user: models_login.Users = Depends(get_current_user)
+             ):
     content = file_input_txt.file.read()
-    editing_text_from_file_todo(todo_id, content.decode('utf-8'))
+    es.editing_text_from_file_todo(todo_id, content.decode('utf-8'))
+    todo = database.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if todo is not None:
+        todo.text_from_file = content.decode('utf-8')
+        todo.text_from_file_hash = hashlib.sha256(content).hexdigest()
+        database.commit()
     return {"answer": "ok"}
-
-
 
 
 @router.post("/generate/{todo_id}", tags=["Todo"])
@@ -1005,3 +874,214 @@ async def extend_detail(request: Request,
 
     database.commit()
     return {"answer": "ok"}
+
+
+@router.get("/activity", response_class=HTMLResponse)
+async def read_root(request: Request):
+    users = await es.get_unique_users()
+    return templates.TemplateResponse("activity.html", {"request": request, "users": users})
+
+
+@router.post("/plot.png")
+async def generate_plot(username: str = Form(...)):
+    try:
+        activity_data = await es.get_user_activity(username)
+
+        if not activity_data["days"] or not activity_data["counts"]:
+            raise ValueError("Нет данных для построения графика")
+        dates = [datetime.datetime.strptime(day, "%Y-%m-%d") for day in activity_data["days"]]
+        counts = activity_data["counts"]
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        ax.plot(dates, counts, marker='o', linestyle='-', color='tab:blue')
+        ax.set_title(f'Активность пользователя {activity_data["username"]}')
+        ax.set_xlabel('Дата')
+        ax.set_ylabel('Количество записей')
+
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m.%Y'))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Метки каждую неделю
+        ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+
+        plt.xticks(rotation=45, ha='right')
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.tight_layout()
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        plt.close(fig)
+        buf.seek(0)
+
+        return StreamingResponse(buf, media_type="image/png")
+
+    except Exception as e:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, f"Ошибка: {str(e)}",
+                ha='center', va='center', fontsize=12)
+        ax.axis('off')
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        plt.close(fig)
+        buf.seek(0)
+        return StreamingResponse(buf, media_type="image/png")
+
+@router.get("/aggregation", response_class=HTMLResponse)
+async def show_aggregation_form(request: Request, database: Session = Depends(get_db), date: Optional[str] = None, interval: Optional[str] = None):
+    """Отображает форму агрегации или результаты"""
+    if date and interval:
+        # Показываем задачи для выбранного интервала
+        ids = es.get_todos_for_interval(interval, date)
+        todos = database.query(models.Todo).order_by(models.Todo.id.desc()).filter(models.Todo.id.in_(ids))
+        return templates.TemplateResponse(
+            "aggregation.html",
+            {
+                "request": request,
+                "show_todos": True,
+                "todos": todos,
+                "selected_date": date,
+                "interval_type": {
+                    "1d": "день",
+                    "1w": "неделя",
+                    "1M": "месяц"
+                }.get(interval, interval)
+            }
+        )
+    else:
+        # Показываем форму выбора интервала
+        return templates.TemplateResponse(
+            "aggregation.html",
+            {
+                "request": request,
+                "show_todos": False
+            }
+        )
+
+@router.post("/aggregation", response_class=HTMLResponse)
+async def show_aggregation_results(
+    request: Request,
+    interval: str = Form(...)
+):
+    """Обрабатывает форму и показывает результаты агрегации"""
+    aggregation_data = es.get_aggregation_data(interval)
+    
+    return templates.TemplateResponse(
+        "aggregation.html",
+        {
+            "request": request,
+            "show_todos": False,
+            "interval_type": {
+                "1d": "дни",
+                "1w": "недели",
+                "1M": "месяцы"
+            }.get(interval, interval),
+            "aggregation_data": aggregation_data,
+            "raw_interval": interval
+        }
+    )
+
+@router.get("/users_tags", response_class=HTMLResponse)
+async def users_tags(request: Request,
+                     database: Session = Depends(get_db)
+                     ):
+    return templates.TemplateResponse(
+        "usersTags.html",
+        {
+            "request": request,
+        }
+    )
+
+@router.post("/create_tag")
+async def create_tag(request: Request,
+                     tag_name: Annotated[str, Form()] = "",
+                     database: Session = Depends(get_db),
+                     current_user: models_login.Users = Depends(get_current_user)
+                     ):
+    if tag_name != "":
+        tag = database.query(models.UsersTags).filter(models.UsersTags.tag == tag_name).count()
+        if tag > 0:
+            return {"answer": "tag exists"}
+        database.add(
+            models.UsersTags(tag=tag_name)   
+        )
+        database.commit()
+        return {"answer": "ok"}
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+@router.delete("/delete_tag")
+async def delete_tag(request: Request,
+                     tag_name: Annotated[str, Form()] = "",
+                     database: Session = Depends(get_db),
+                     current_user: models_login.Users = Depends(get_current_user)
+                     ):
+    print(tag_name)
+    if current_user.name != "admin":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if tag_name != "":
+        tag = database.query(models.UsersTags).filter(models.UsersTags.tag == tag_name).all()
+        print(tag)
+        if len(tag) < 1:
+            return {"answer": "tag  don`t exists"}
+        for item in tag:
+            database.delete(item)
+        database.commit()
+        return {"answer": "ok"}
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+@router.get("/get_tags")
+async def get_tags(request: Request,
+                   q: str = Query(..., min_length=1),
+                   database: Session = Depends(get_db)
+                   ):
+    tags = (
+        database.query(models.UsersTags.tag)
+        .filter(models.UsersTags.tag.ilike(f"%{q}%"))
+        .distinct()
+        .limit(10)
+        .all()
+    )
+    return [tag[0] for tag in tags if tag[0]]
+
+@router.get("/cluster/{count_clusters}")
+async def cluster_texts(request: Request,
+                  count_clusters: int,
+                  cluster_type: str = 'def',
+                  database: Session = Depends(get_db)):
+    """Кластеризация заметок по описанию (details)
+
+    :param request: Запрос
+    :type request: Request
+    :param count_clusters: Количество кластеров, defaults to 3
+    :type count_clusters: int, optional
+    :param database: База данных, defaults to Depends(get_db)
+    :type database: Session, optional
+    :return: Страница кластеризации
+    :rtype: _type_
+    """
+    clusters_full = {}
+    todos = database.query(models.Todo).all()
+    if not count_clusters == 0:
+        todos_details = []
+        todos_ids = []
+        for todo in todos:
+                todos_details.append(todo.details)
+                todos_ids.append(todo.id)
+        if cluster_type == 'def':
+            todos_clusters = await clusterization.clusterization_texts(texts=todos_details,
+                                                                    ids=todos_ids,
+                                                                    count_clusters=count_clusters)
+            clusters_full = await clusterization.group_clustered_todos(todos_clusters, todos)
+        elif cluster_type == 'llm':
+            clusters_full = await llm.cluster_todos_llm_only(texts=todos_details,
+                                                       ids=todos_ids,
+                                                       todos=todos,
+                                                       count_clusters=count_clusters)
+
+    return templates.TemplateResponse(
+            "clusterization.html",
+            {
+                "request": request,
+                "clusters": clusters_full,
+            }
+        )
